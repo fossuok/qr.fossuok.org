@@ -1,56 +1,79 @@
-# QR-Based Event Registration (Prototype)
+# QR-Based Event Registration
 
 This is a sample event registration system that uses QR codes to verify attendance.
 
 ## Tech Stack
-- FastAPI
-- SQLAlchemy + SQLite (prototype) / Supabase Postgres (production)
-- Jinja2 Templates
-- qrcode library
+
+- **FastAPI** — backend API and HTML page serving
+- **SQLAlchemy** + SQLite (prototype) / Supabase Postgres (production)
+- **Jinja2** — HTML templates
+- **qrcode** — server-side QR code generation
 
 ## Requirements
+
 - Python 3.12+
-- uv
+- [uv](https://docs.astral.sh/uv/)
 
 ## Setup
+
 1. Clone the repo
     ```bash
     git clone https://github.com/fossuok/qr.fossuok.org.git
+    cd qr.fossuok.org
     ```
+
 2. Install dependencies
     ```bash
     uv sync
     ```
+
 3. Copy `.env.example` to `.env` and fill in values
     ```bash
+    # Linux/macOS
     cp .env.example .env
+
+    # Windows
+    copy .env.example .env
     ```
+
 4. Run the application
     ```bash
     python main.py
     ```
+   The app will be available at `http://localhost:8000`
 
 ## Endpoints
 
+### Pages
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | /register | Registration page |
-| GET | /verify | Verification page |
-| POST | /api/register | Create user and generate QR |
-| POST | /api/verify | Verify a scanned QR |
-| GET | /users/{id}/qr | Download QR as PNG |
+| GET | `/` | Registration page |
+| GET | `/verify` | QR scan & verification page |
+
+### API
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| GET | `/health` | — | Server health check |
+| POST | `/api/register` | `{ "name": "...", "email": "..." }` | Create user and return QR code as base64 image |
+| POST | `/api/verify` | `{ "id": "<uuid>" }` | Verify a scanned QR and return user details |
+| GET | `/users/{qr_uuid}/qr` | — | Stream the QR code as a downloadable PNG |
+
+> The interactive API docs are available at `/docs` (Swagger UI) and `/redoc`.
 
 ## Project Structure
 
-```bash
-├── config/                  # includes db connection and other configs
-├── models/                  # database models
-├── routes/                  # api routes
-├── schemas/                 # data schemas (pydantic models)
-├── templates/               # HTML templates
-├── .python-version          # python version
-├── main.py                  # main entry point of the FastAPI app
-├── pyproject.toml           # project configurations and required packages
-├── uv.lock                  # lock file for uv
-├── vercel.json              # vercel deployment configurations
-└── .env.example             # Template for env variables
+```
+├── config/          # Database connection and session setup
+├── models/          # SQLAlchemy ORM models
+├── routes/          # HTTP route handlers (thin layer)
+├── schemas/         # Pydantic request/response schemas
+├── services/        # Business logic (QR generation, user registration, verification)
+├── templates/       # Jinja2 HTML templates
+├── main.py          # App entry point — lifespan, middleware, router registration
+├── pyproject.toml   # Project metadata and dependencies
+├── uv.lock          # Dependency lock file
+├── vercel.json      # Vercel deployment configuration
+└── .env.example     # Template for required environment variables
+```
