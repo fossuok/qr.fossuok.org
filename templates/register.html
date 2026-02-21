@@ -1,0 +1,141 @@
+{% extends "layout.html" %}
+{% block title %}Register & Download QR{% endblock %}
+
+{% block content %}
+    <div class="card p-4">
+        <h3 class="mb-3">Register and get your QR</h3>
+
+        <form id="registerForm" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Full name</label>
+                <input type="text" name="name" id="name" class="form-control" placeholder="Jane Doe" required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" id="email" class="form-control" placeholder="jane@example.com"
+                       required>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Generate & Download QR</button>
+                <button type="button" id="generatePreview" class="btn btn-outline-secondary">Preview only</button>
+            </div>
+        </form>
+
+        <hr class="my-4">
+
+        <div class="row">
+            <div class="col-md-6">
+                <h6>QR Preview</h6>
+                <div id="qrContainer" class="qr-preview" style="min-height:200px;">
+                    <div id="qrcode" aria-hidden="true"></div>
+                </div>
+                <div class="mt-2 small-muted">If you click Generate, the QR will be downloaded automatically.</div>
+            </div>
+
+            <div class="col-md-6">
+                <h6>Submitted Data</h6>
+                <pre id="submittedData" class="p-3 bg-white rounded"
+                     style="min-height:200px; overflow:auto;">No data yet.</pre>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <!-- inside your register.html, in the scripts block -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('registerForm');
+            const submitted = document.getElementById('submittedData');
+            const qrContainer = document.getElementById('qrcode');
+
+            // create UI elements for server-generated QR
+            const serverQrWrapper = document.createElement('div');
+            serverQrWrapper.className = 'mt-3';
+            const serverImg = document.createElement('img');
+            serverImg.alt = 'QR code';
+            serverImg.style.maxWidth = '220px';
+            serverImg.style.height = 'auto';
+            serverImg.id = 'serverQrImg';
+            serverQrWrapper.appendChild(serverImg);
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'btn btn-success mt-2';
+            downloadBtn.textContent = 'Download QR';
+            downloadBtn.id = 'downloadQrBtn';
+            serverQrWrapper.appendChild(downloadBtn);
+
+            // append wrapper to qrContainer
+            qrContainer.appendChild(serverQrWrapper);
+
+            async function postToServerJson(obj) {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(obj)
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({detail: 'Unknown error'}));
+                    throw new Error(err.detail || 'Server error');
+                }
+                return res.json();
+            }
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const name = document.getElementById('name').value.trim();
+                const email = document.getElementById('email').value.trim();
+                // optional note field if you add it
+                const noteEl = document.getElementById('note');
+                const note = noteEl ? noteEl.value.trim() : '';
+
+                submitted.textContent = 'Submitting...';
+
+                try {
+                    // send minimal data; server will generate id and QR
+                    const payload = {name, email, note};
+                    const data = await postToServerJson(payload);
+
+                    // show returned id and payload
+                    submitted.textContent = JSON.stringify({id: data.id, name, email, note}, null, 2);
+
+                    // display server-generated QR image (data URL)
+                    if (data.qr_data_url) {
+                        serverImg.src = data.qr_data_url;
+                        serverImg.alt = `QR for ${data.id}`;
+
+                        // set download button to download the data URL as a file
+                        downloadBtn.onclick = function () {
+                            const a = document.createElement('a');
+                            a.href = data.qr_data_url;
+                            a.download = `${data.id}.png`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                        };
+                    } else {
+                        serverImg.src = '';
+                    }
+                } catch (err) {
+                    submitted.textContent = 'Error: ' + err.message;
+                    console.error(err);
+                }
+            });
+
+            // Preview button behavior (client-side preview only)
+            const previewBtn = document.getElementById('generatePreview');
+            if (previewBtn) {
+                previewBtn.addEventListener('click', function () {
+                    const name = document.getElementById('name').value.trim() || 'Preview Name';
+                    const email = document.getElementById('email').value.trim() || 'preview@example.com';
+                    const payload = {id: 'preview-id', name, email, note: ''};
+                    // render client-side preview (optional)
+                    qrContainer.querySelector('#qrcode')?.remove(); // remove old if any
+                    submitted.textContent = JSON.stringify(payload, null, 2);
+                });
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,268 @@
+{% extends "layout.html" %}
+{% block title %}Verify QR (Scan){% endblock %}
+
+{% block content %}
+    <div class="card p-4">
+        <h3 class="mb-3">Scan QR to verify</h3>
+
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div id="reader"
+                     style="width:100%; min-height:360px; background:#fff; border-radius:.5rem; padding:12px;">
+                    <!-- Video element for camera stream -->
+                    <video id="video" autoplay muted playsinline
+                           style="width:100%; height:auto; border-radius:.5rem; background:#000;"></video>
+                    <!-- Canvas used for frame capture and decoding (kept hidden) -->
+                    <canvas id="canvas" style="display:none;"></canvas>
+                </div>
+                <div class="mt-2 small-muted">Allow camera access when prompted. Use a well-lit area for best results.
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <h6>Scan result</h6>
+                <div id="scanResult" class="p-3 bg-white rounded" style="min-height:200px; overflow:auto;">
+                    <div class="text-muted">No scan yet.</div>
+                </div>
+
+                <div class="mt-3">
+                    <button id="startBtn" class="btn btn-success w-100 mb-2">Start Camera</button>
+                    <button id="stopBtn" class="btn btn-outline-danger w-100">Stop Camera</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        (async function () {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const scanResult = document.getElementById('scanResult');
+
+            let stream = null;
+            let rafId = null;
+            let detector = null;
+            let useJsQR = false;
+            let jsQRLib = null;
+            let processing = false;        // prevents duplicate handling
+            let lastDecoded = null;        // optional: ignore identical repeated values
+            const COOLDOWN_MS = 1200;      // pause after a successful decode
+
+            function loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector(`script[src="${url}"]`)) return resolve();
+                    const s = document.createElement('script');
+                    s.src = url;
+                    s.async = true;
+                    s.onload = () => resolve();
+                    s.onerror = () => reject(new Error('Failed to load ' + url));
+                    document.head.appendChild(s);
+                });
+            }
+
+            async function ensureDecoder() {
+                if (window.BarcodeDetector) {
+                    try {
+                        detector = new BarcodeDetector({formats: ['qr_code']});
+                        return;
+                    } catch (e) {
+                        detector = null;
+                    }
+                }
+                const CDN = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+                try {
+                    await loadScript(CDN);
+                    if (window.jsQR) {
+                        useJsQR = true;
+                        jsQRLib = window.jsQR;
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('CDN load failed', err);
+                }
+                try {
+                    await loadScript('/static/js/jsQR.js');
+                    if (window.jsQR) {
+                        useJsQR = true;
+                        jsQRLib = window.jsQR;
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Local fallback failed', err);
+                }
+                throw new Error('No QR decoder available.');
+            }
+
+            function showMessage(html, isError = false) {
+                scanResult.innerHTML = html;
+                if (isError) console.error(html);
+            }
+
+            async function startCamera() {
+                try {
+                    await ensureDecoder();
+                } catch (err) {
+                    showMessage('<div class="text-danger">Scanner library failed to load. Check network or serve jsQR locally.</div>', true);
+                    return;
+                }
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {facingMode: 'environment'},
+                        audio: false
+                    });
+                    video.srcObject = stream;
+                    await video.play();
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    scanLoop();
+                    showMessage('<div class="text-success">Camera started. Point camera at QR code.</div>');
+                } catch (err) {
+                    showMessage(`<div class="text-danger">Camera start failed: ${err.message}</div>`, true);
+                }
+            }
+
+            function stopCamera() {
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = null;
+                processing = false;
+                lastDecoded = null;
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    stream = null;
+                }
+                video.pause();
+                video.srcObject = null;
+                showMessage('<div class="text-muted">Scanner stopped.</div>');
+            }
+
+            function scheduleResume(delay = COOLDOWN_MS) {
+                setTimeout(() => {
+                    if (stream) scanLoop();
+                    processing = false;
+                }, delay);
+            }
+
+            async function scanLoop() {
+                const ctx = canvas.getContext('2d');
+
+                async function frame() {
+                    if (!video || video.readyState < 2) {
+                        rafId = requestAnimationFrame(frame);
+                        return;
+                    }
+
+                    // draw current frame to canvas
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    try {
+                        if (processing) {
+                            // skip decoding while processing a previous result
+                        } else if (detector) {
+                            const bitmap = await createImageBitmap(canvas);
+                            const barcodes = await detector.detect(bitmap);
+                            bitmap.close();
+                            if (barcodes && barcodes.length) {
+                                handleDecoded(barcodes[0].rawValue);
+                                return; // exit frame early; handleDecoded will resume loop
+                            }
+                        } else if (useJsQR && jsQRLib) {
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const code = jsQRLib(imageData.data, imageData.width, imageData.height);
+                            if (code && code.data) {
+                                handleDecoded(code.data);
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('decode error', err);
+                    }
+
+                    rafId = requestAnimationFrame(frame);
+                }
+
+                // start the frame loop
+                rafId = requestAnimationFrame(frame);
+            }
+
+            async function handleDecoded(decodedText) {
+                // Prevent duplicates and concurrent processing
+                if (processing) return;
+                if (decodedText && decodedText === lastDecoded) {
+                    // If same value repeatedly detected, apply a short cooldown
+                    processing = true;
+                    scheduleResume(COOLDOWN_MS);
+                    return;
+                }
+
+                processing = true;
+                lastDecoded = decodedText;
+
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
+
+                showMessage('<div class="text-info">Scanned: <pre>' + escapeHtml(decodedText) + '</pre></div>');
+
+                // Verification request with timeout
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 8000); // for 8s
+
+                try {
+                    const res = await fetch('/api/verify', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({payload: decodedText}),
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeout);
+
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.valid) {
+                            showMessage(`<div><strong>${escapeHtml(json.user.name)}</strong> (${escapeHtml(json.user.email)}) — <span class="badge bg-success">Valid</span></div>`);
+                        } else {
+                            showMessage('<div class="badge bg-danger">Invalid</div>');
+                        }
+                    } else {
+                        const txt = await res.text().catch(() => res.statusText);
+                        showMessage('<div class="text-warning">Verify API error: ' + escapeHtml(txt) + '</div>');
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        showMessage('<div class="text-warning">Verification timed out. Try again.</div>');
+                    } else {
+                        console.warn('verify request failed', err);
+                        showMessage('<div class="text-muted">Scanned locally: <pre>' + escapeHtml(decodedText) + '</pre></div>');
+                    }
+                } finally {
+                    scheduleResume(COOLDOWN_MS);
+                }
+            }
+
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, function (m) {
+                    return ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m];
+                });
+            }
+
+
+            startBtn.addEventListener('click', () => {
+                if (!stream) startCamera();
+            });
+            stopBtn.addEventListener('click', () => {
+                stopCamera();
+            });
+
+            window.addEventListener('beforeunload', () => stopCamera());
+        })();
+    </script>
+{% endblock %}
