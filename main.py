@@ -1,24 +1,24 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from config import engine, Base
-from routes import users
+from routes import users, auth, admin
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # create all the tables at the startup
     Base.metadata.create_all(bind=engine)
     yield
-
-    # REMEMBER: when using supabase/postgresql, it needs to close the connection pool
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
 
-# add CORS middleware
+templates = Jinja2Templates(directory="templates")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,29 +26,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# add the routes to the app
-app.include_router(users.router)
+# ── Routers ────────────────────────────────────────────────────────────────────
+app.include_router(auth.router)     # /auth/*
+app.include_router(admin.router)    # /admin/*
+app.include_router(users.router)    # /user/*
 
 
-@app.get("/")
-async def root() -> dict[str, str]:
-    return {
-        "version": "0.1.0",
-        "message": "Welcome to the FOSSUoK QR-based event registration system!",
-        "docs": "/docs",
-        "redoc": "/redoc",
-    }
+# ── Root ───────────────────────────────────────────────────────────────────────
+@app.get("/", response_class=HTMLResponse)
+async def homepage(request: Request):
+    """Login page — entry point for everyone."""
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "message": "Server is running",
-    }
+    return {"status": "ok", "message": "Server is running"}
 
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, port=8000)

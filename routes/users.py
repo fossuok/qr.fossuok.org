@@ -7,27 +7,32 @@ from sqlalchemy.orm import Session
 
 from config import get_db
 from schemas import CreateUser, VerifyUser
-from services import register_user, verify_user, get_qr_image
+from services import register_user, get_qr_image
 
-router = APIRouter()
+router: APIRouter = APIRouter(
+    prefix="/user",
+    tags=["User"]
+)
+
 templates = Jinja2Templates(directory="templates")
-
 db_dep = Annotated[Session, Depends(get_db)]
 
 
-@router.get("/", response_class=HTMLResponse)
-async def register_page(request: Request):
+@router.get("/events", response_class=HTMLResponse)
+async def events_page(request: Request):
+    """Public event listing — users pick an event and register."""
     return templates.TemplateResponse("register.html", {"request": request})
 
 
-@router.get("/verify", response_class=HTMLResponse)
-async def verify_page(request: Request):
-    return templates.TemplateResponse("verify.html", {"request": request})
+@router.get("/dashboard", response_class=HTMLResponse)
+async def user_dashboard(request: Request):
+    """User dashboard — placeholder for future user session support."""
+    return templates.TemplateResponse("register.html", {"request": request})
 
 
-@router.post("/api/register")
+@router.post("/events/register")
 async def api_register(payload: CreateUser, db: db_dep):
-    """Register a new user and return their generated QR code."""
+    """Register a user for an event and return their QR code."""
     try:
         return register_user(payload, db)
     except HTTPException:
@@ -37,21 +42,10 @@ async def api_register(payload: CreateUser, db: db_dep):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/users/{qr_data}/qr")
+@router.get("/events/{qr_data}/qr")
 async def download_qr(qr_data: str):
     """Stream a QR code PNG for the given data string as a file download."""
     try:
         return get_qr_image(qr_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/api/verify")
-async def api_verify(payload: VerifyUser, db: db_dep):
-    """Verify a scanned QR code and return the associated user details."""
-    try:
-        return verify_user(payload, db)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))

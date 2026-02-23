@@ -15,10 +15,11 @@ This is a sample event registration system that uses QR codes to verify attendan
 - [uv](https://docs.astral.sh/uv/)
 
 ## Setup
+### Application
 
 1. Clone the repo
     ```bash
-    git clone https://github.com/fossuok/qr.fossuok.org.git
+    git clone https://github.com/DasunNethsara-04/test-qr-app.git
     cd qr.fossuok.org
     ```
 
@@ -41,6 +42,17 @@ This is a sample event registration system that uses QR codes to verify attendan
     python main.py
     ```
    The app will be available at `http://localhost:8000`
+
+### GitHub (For Login)
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click on "New OAuth App
+3. Fill in the following details:
+    - Application name: `QR Event Registration`
+    - Homepage URL: `http://localhost:8000`
+    - Authorization callback URL:
+4. Click on "Register application"
+5. Copy the "Client ID" and "Client Secret"
 
 ## Endpoints
 

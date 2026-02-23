@@ -47,10 +47,13 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
     <div class="container">
         <a class="navbar-brand fw-bold" href="/">QR Manager</a>
-        <div>
-            <a class="btn btn-outline-primary btn-sm me-2" href="/">Register</a>
-            <a class="btn btn-outline-secondary btn-sm" href="/verify">Verify</a>
+        {% block nav_items %}
+        <div class="d-flex align-items-center gap-2">
+            <a class="btn btn-outline-primary btn-sm" href="/user/events">QR Register</a>
+            <a class="btn btn-outline-secondary btn-sm" href="/admin/verify">Verify QR</a>
+            <a class="btn btn-danger btn-sm" href="/auth/logout">Logout</a>
         </div>
+        {% endblock %}
     </div>
 </nav>
 

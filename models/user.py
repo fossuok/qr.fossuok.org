@@ -10,8 +10,13 @@ class User(Base):
 
     id: Column[int] = Column(Integer, primary_key=True, index=True)
     name: Column[str] = Column(String, nullable=False)
-    email: Column[str] = Column(String, unique=True, nullable=False)
-    qr_code_data: Column[str] = Column(String, nullable=False, unique=True)
+    email: Column[str] = Column(String, unique=True, nullable=True)
+    qr_code_data: Column[str] = Column(String, nullable=True, unique=True)
+
+    # for github
+    github_id: Column[str] = Column(String, unique=True, nullable=True)
+    avatar_url: Column[str] = Column(String, nullable=True)
+    access_token: Column[str] = Column(String, nullable=True)
 
     created_at: Column[datetime] = Column(
         DateTime,
