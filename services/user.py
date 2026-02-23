@@ -47,15 +47,27 @@ async def register_user(payload: CreateUser) -> JSONResponse:
     })
 
 
-async def verify_user(payload: VerifyUser) -> dict:
+async def verify_user(qr_input: str) -> dict:
     """
-    Looks up a user in Supabase by their QR code data (UUID).
+    Looks up a user in Supabase by their QR code data.
+    The input can be a raw UUID string or a JSON string containing an 'id' key.
     """
+    search_id = qr_input
+
+    # Try to parse as JSON in case it's the full payload
+    try:
+        data = json.loads(qr_input)
+        if isinstance(data, dict) and "id" in data:
+            search_id = data["id"]
+    except (json.JSONDecodeError, TypeError):
+        # Not JSON, assume it's the raw ID string
+        pass
+
     try:
         response = await asyncio.to_thread(
             supabase.table("users")
             .select("*")
-            .eq("qr_code_data", payload.id)
+            .eq("qr_code_data", search_id)
             .execute
         )
         users = response.data
