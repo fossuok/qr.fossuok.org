@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from routes import users, auth, admin
+from routes import users, auth, admin, api
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ templates = Jinja2Templates(directory="templates")
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(users.router)
+app.include_router(api.router)
 
 
 @app.get("/", response_class=HTMLResponse)
