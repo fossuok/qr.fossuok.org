@@ -1,3 +1,6 @@
+import os
+from typing import Final
+
 from fastapi import APIRouter, HTTPException, Cookie, Request
 from starlette.responses import RedirectResponse
 
@@ -13,6 +16,8 @@ router: APIRouter = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
+
+MAX_AGE: Final[int] = 86400
 
 
 async def get_current_user(session: str | None = Cookie(default=None)):
@@ -49,21 +54,28 @@ async def github_callback(request: Request):
     if not supabase_user:
         raise HTTPException(status_code=401, detail="Supabase authentication failed")
 
-    session_user = {
-        "user_id": supabase_user.id,
-        "name": supabase_user.user_metadata.get("full_name") or supabase_user.email,
-        "email": supabase_user.email,
-        "avatar_url": supabase_user.user_metadata.get("avatar_url")
-    }
+    session_user = SessionUser(
+        user_id=supabase_user.id,
+        name=supabase_user.user_metadata.get("full_name") or supabase_user.email,
+        email=supabase_user.email,
+        avatar_url=supabase_user.user_metadata.get("avatar_url")
+    )
 
-    session_token: str = create_session_cookie(session_user)
+    session_token: str = create_session_cookie(session_user.model_dump())
 
-    response: RedirectResponse = RedirectResponse(url="/admin/dashboard")
+    response = RedirectResponse(url="/admin/dashboard")
+
+    # Enable secure=True in production (requires HTTPS)
+    is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
     response.set_cookie(
         key="session",
         value=session_token,
         httponly=True,
-        samesite="lax"
+        secure=is_prod,
+        samesite="lax",
+        max_age=MAX_AGE,
+        expires=MAX_AGE
     )
     return response
 
