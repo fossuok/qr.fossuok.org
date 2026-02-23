@@ -1,83 +1,41 @@
-from os import getenv
+import asyncio
+import os
+from typing import Optional
 
-import httpx
 from dotenv import load_dotenv
 from itsdangerous import URLSafeTimedSerializer
-from sqlalchemy.orm import Session
 
-from models import User
-from schemas import GitHubUser, SessionUser
+from config.supabase import supabase
+from schemas import SessionUser
 
 load_dotenv()
 
-APP_SECRET_KEY = getenv("APP_SECRET_KEY")
-GITHUB_CLIENT_ID = getenv("GITHUB_CLIENT_ID")
-GITHUB_CLIENT_SECRET = getenv("GITHUB_CLIENT_SECRET")
+APP_SECRET_KEY = os.getenv("APP_SECRET_KEY")
 
 
 def build_github_redirect_url() -> str:
-    """Build the GitHub OAuth redirect URL."""
-    return f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=user:email"
+    """Uses Supabase client to build OAuth URL for PKCE flow."""
+    res = supabase.auth.sign_in_with_oauth({
+        "provider": "github",
+        "options": {
+            "redirect_to": os.getenv('SUPABASE_GITHUB_CALLBACK_URL')
+        }
+    })
+    return res.url
 
 
-def exchange_code_for_token(code: str) -> str:
-    url: str = "https://github.com/login/oauth/access_token"
-    headers: dict[str, str] = {"Accept": "application/json"}
-    params: dict[str, str] = {
-        "client_id": GITHUB_CLIENT_ID,
-        "client_secret": GITHUB_CLIENT_SECRET,
-        "code": code
-    }
-
-    response: httpx.Response = httpx.post(url, headers=headers, params=params)
-    response.raise_for_status()
-    data = response.json()
-    return data["access_token"]
+async def handle_supabase_callback(code: str):
+    """Exchanges the PKCE code for a session and returns the user."""
+    res = await asyncio.to_thread(supabase.auth.exchange_code_for_session, {"auth_code": code})
+    return res.user
 
 
-def fetch_github_user(access_token: str) -> GitHubUser:
-    """Fetch the GitHub user from the GitHub API."""
-    url: str = "https://api.github.com/user"
-    headers: dict[str, str] = {"Authorization": f"Bearer {access_token}"}
-
-    response: httpx.Response = httpx.get(url, headers=headers)
-    response.raise_for_status()
-    data = response.json()
-    return GitHubUser(**data)
-
-
-def get_or_create_user(github_user: GitHubUser, access_token: str, db: Session) -> User:
-    """Get or create a user from the GitHub user."""
-    user: User | None = db.query(User).filter(User.github_id == str(github_user.id)).first()
-    if user:
-        return user
-
-    user: User = User(
-        github_id=str(github_user.id),
-        access_token=access_token,
-        name=github_user.name,
-        email=github_user.email,
-        avatar_url=github_user.avatar_url
-    )
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-def create_session_cookie(user: User) -> str:
+def create_session_cookie(user_data: dict) -> str:
     serializer = URLSafeTimedSerializer(APP_SECRET_KEY)
-    session_data = {
-        "user_id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "avatar_url": user.avatar_url
-    }
-    return serializer.dumps(session_data)
+    return serializer.dumps(user_data)
 
 
-def decode_session_cookie(token: str) -> SessionUser | None:
+def decode_session_cookie(token: str) -> Optional[SessionUser]:
     serializer = URLSafeTimedSerializer(APP_SECRET_KEY)
     try:
         session_data = serializer.loads(token, max_age=86_400)
