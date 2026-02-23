@@ -1,16 +1,11 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Cookie
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Cookie, Request
 from starlette.responses import RedirectResponse
 
-from config import get_db
+from schemas import SessionUser
 from services import (
     build_github_redirect_url,
-    get_or_create_user,
+    handle_supabase_callback,
     create_session_cookie,
-    exchange_code_for_token,
-    fetch_github_user,
     decode_session_cookie
 )
 
@@ -19,40 +14,51 @@ router: APIRouter = APIRouter(
     tags=["Authentication"]
 )
 
-db_dep = Annotated[Session, Depends(get_db)]
-
-
-# ── Reusable dependency ────────────────────────────────────────────────────────
 
 async def get_current_user(session: str | None = Cookie(default=None)):
     """Dependency — reads the signed session cookie and returns the SessionUser."""
     if not session:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    session_user = decode_session_cookie(session)
+    session_user: SessionUser | None = decode_session_cookie(session)
     if not session_user:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
 
     return session_user
 
 
-# ── OAuth routes ───────────────────────────────────────────────────────────────
-
 @router.get("/github")
 async def github_login():
-    """Redirect the admin to GitHub's OAuth authorization page."""
+    """Redirect to Supabase Auth."""
     return RedirectResponse(url=build_github_redirect_url())
 
 
-@router.get("/github/callback")
-async def github_callback(code: str, db: db_dep):
-    """Handle the GitHub OAuth callback, create/update the user, set session cookie."""
-    access_token: str = exchange_code_for_token(code)
-    github_user = fetch_github_user(access_token)
-    user = get_or_create_user(github_user, access_token, db)
-    session_token: str = create_session_cookie(user)
+@router.get("/callback")
+async def github_callback(request: Request):
+    """
+    Handle the callback from Supabase (PKCE flow).
+    """
+    code = request.query_params.get("code")
 
-    response = RedirectResponse(url="/admin/dashboard")
+    if not code:
+        # If no code in query, it's either an error or still using implicit flow
+        return {
+            "message": "Auth code not found. Please ensure PKCE is enabled in Supabase or check your redirect settings."}
+
+    supabase_user = await handle_supabase_callback(code)
+    if not supabase_user:
+        raise HTTPException(status_code=401, detail="Supabase authentication failed")
+
+    session_user = {
+        "user_id": supabase_user.id,
+        "name": supabase_user.user_metadata.get("full_name") or supabase_user.email,
+        "email": supabase_user.email,
+        "avatar_url": supabase_user.user_metadata.get("avatar_url")
+    }
+
+    session_token: str = create_session_cookie(session_user)
+
+    response: RedirectResponse = RedirectResponse(url="/admin/dashboard")
     response.set_cookie(
         key="session",
         value=session_token,
