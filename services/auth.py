@@ -27,6 +27,10 @@ def build_github_redirect_url() -> str:
 async def handle_supabase_callback(code: str):
     """Exchanges the PKCE code for a session and returns the user."""
     res = await asyncio.to_thread(supabase.auth.exchange_code_for_session, {"auth_code": code})
+    
+    if not res or not res.user:
+        return None
+        
     return res.user
 
 
