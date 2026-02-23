@@ -10,7 +10,7 @@ class GitHubUser(BaseModel):
 
 
 class SessionUser(BaseModel):
-    user_id: int
+    user_id: str
     name: str
     email: str | None
     avatar_url: str | None
