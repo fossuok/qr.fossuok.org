@@ -1,7 +1,7 @@
 import os
 from typing import Final
 
-from fastapi import APIRouter, HTTPException, Cookie, Request
+from fastapi import APIRouter, HTTPException, Cookie, Request, BackgroundTasks
 from starlette.responses import RedirectResponse
 
 from schemas import SessionUser
@@ -39,7 +39,7 @@ async def github_login():
 
 
 @router.get("/callback")
-async def github_callback(request: Request):
+async def github_callback(request: Request, background_tasks: BackgroundTasks):
     """
     Handle the callback from Supabase (PKCE flow).
     """
@@ -53,8 +53,17 @@ async def github_callback(request: Request):
         raise HTTPException(status_code=401, detail="Supabase authentication failed")
 
     # AUTO-REGISTRATION: Sync user data and link to active event
-    from services import auto_register_user
+    from services import auto_register_user, send_qr_email
     db_user = await auto_register_user(supabase_user)
+    
+    # Send QR email in background if it's a new registration or needs resending
+    if "qr_data_url" in db_user:
+        background_tasks.add_task(
+            send_qr_email, 
+            db_user["email"], 
+            db_user["name"], 
+            db_user["qr_data_url"]
+        )
 
     session_user = SessionUser(
         user_id=db_user["qr_code_data"],
