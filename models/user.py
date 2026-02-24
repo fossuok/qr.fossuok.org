@@ -11,7 +11,6 @@ class User(BaseModel):
     qr_code_data: Optional[str] = None
     github_id: Optional[str] = None
     avatar_url: Optional[str] = None
-    access_token: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
