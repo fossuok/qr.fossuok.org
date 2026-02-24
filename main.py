@@ -18,13 +18,6 @@ app: FastAPI = FastAPI(
 
 templates = Jinja2Templates(directory="templates")
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(users.router)
