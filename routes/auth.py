@@ -21,7 +21,7 @@ MAX_AGE: Final[int] = 86400
 
 
 async def get_current_user(session: str | None = Cookie(default=None)):
-    """Dependency — reads the signed session cookie and returns the SessionUser."""
+    """Dependency - reads the signed session cookie and returns the SessionUser."""
     if not session:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
