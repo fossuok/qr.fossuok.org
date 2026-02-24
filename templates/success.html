@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+
+{% block title %}Success! - FOSS Community UOK{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-3 py-md-4">
+    <div class="col-12 col-md-11 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-lg p-3 p-md-4 bg-white text-center rounded-5">
+            <div class="mb-4">
+                <div class="display-4 text-success mb-2">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <h1 class="h2 fw-bold text-dark mb-1">Registration Successful!</h1>
+                <p class="text-muted small mb-0">You're all set for the <strong>Open Dev Summit '26</strong></p>
+            </div>
+
+            <div class="row align-items-center justify-content-center mb-4 g-3 bg-light py-3 px-2 rounded-4 mx-1">
+                <div class="col-auto">
+                    <img src="{{ user.avatar_url or 'https://github.com/identicons/default.png' }}" 
+                         alt="User Avatar" 
+                         class="rounded-circle border border-4 border-white shadow-sm" 
+                         width="100" height="100">
+                </div>
+                <div class="col-md-7 text-md-start">
+                    <div class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill mb-2 small">
+                        <i class="bi bi-patch-check-fill me-1"></i> Verified Participant
+                    </div>
+                    <h2 class="h3 fw-bold mb-1 text-dark">{{ user.name }}</h2>
+                    <p class="text-muted small mb-0">{{ user.email }}</p>
+                </div>
+            </div>
+
+            <div class="row text-start g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-4 h-100 bg-white text-center">
+                        <h6 class="fw-bold mb-2">Your QR Code</h6>
+                        <img src="{{ qr_data_url }}" alt="QR Code" class="img-fluid mb-2 border rounded p-1" style="max-width: 120px;">
+                        <a href="/user/events/{{ user.user_id }}/qr" class="btn btn-sm btn-outline-primary d-block">
+                            <i class="bi bi-download me-1"></i> Download
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-4 h-100 bg-white">
+                        <h6 class="fw-bold d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-envelope-check text-primary"></i> 
+                            Inbox
+                        </h6>
+                        <p class="text-muted small mb-0">
+                            We've sent a high-res QR to your email. Check your spam if missing.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-4 h-100 bg-white">
+                        <h6 class="fw-bold d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-phone-vibrate text-primary"></i> 
+                            Arrival 
+                        </h6>
+                        <p class="text-muted small mb-0">
+                            Have your QR code ready on your phone for a quick scan at the gate.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
+                <a href="/" class="btn btn-dark px-4 py-2 rounded-3 shadow-sm">
+                    <i class="bi bi-house-door me-1"></i> Homepage
+                </a>
+                <a href="/auth/logout" class="btn btn-outline-danger px-4 py-2 rounded-3">
+                    Log Out
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

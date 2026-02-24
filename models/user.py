@@ -1,28 +1,18 @@
 from datetime import datetime, timezone
+from typing import Optional
 
-from sqlalchemy import Column, Integer, String, DateTime
-
-from config import Base
+from pydantic import BaseModel, Field
 
 
-class User(Base):
-    __tablename__ = "users"
+class User(BaseModel):
+    id: Optional[int] = None
+    name: str
+    email: Optional[str] = None
+    qr_code_data: Optional[str] = None
+    github_id: Optional[str] = None
+    avatar_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    id: Column[int] = Column(Integer, primary_key=True, index=True)
-    name: Column[str] = Column(String, nullable=False)
-    email: Column[str] = Column(String, unique=True, nullable=False)
-    qr_code_data: Column[str] = Column(String, nullable=False, unique=True)
-
-    created_at: Column[datetime] = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc)
-    )
-
-    updated_at: Column[datetime] = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
-    )
-
-    def __repr__(self) -> str:
-        return f"User(id={self.id}, name={self.name}, email={self.email})"
+    class Config:
+        from_attributes: bool = True

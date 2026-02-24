@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+
+{% block title %}Register for Open Dev Summit '26 - FOSS Community UOK{% endblock %}
+
+{% block nav_items %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-6 text-center text-md-start mb-5 mb-md-0">
+        <h1 class="display-4 fw-bold mb-3"><span class="text-primary">Open Dev Summit '26</span></h1>
+        <p class="lead text-muted mb-4">
+            Register now for our upcoming Open Dev Summit '26 and get your entry pass immediately.
+            No forms, no hassle - just GitHub.
+        </p>
+    </div>
+    
+    <div class="col-md-5 col-lg-5">
+        <div class="card p-4 p-lg-5 shadow-lg border-primary-subtle">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold mb-1">Get Started</h3>
+                <p class="text-muted small">Sign in to automatically register</p>
+            </div>
+
+            <a href="/auth/github" class="btn btn-dark w-100 py-3 mb-3 d-flex align-items-center justify-content-center gap-2 rounded-4">
+                <i class="bi bi-github fs-5"></i>
+                <span>Continue with GitHub</span>
+            </a>
+
+            <div class="text-center">
+                <hr class="text-muted opacity-25">
+                <small class="text-muted" style="font-size: 0.75rem;">
+                    Sign in triggers automatic event registration and QR code generation.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,7 +1,5 @@
-from .db import get_db, Base, engine
+from .supabase import supabase
 
 __all__ = [
-    "get_db",
-    "Base",
-    "engine"
+    "supabase"
 ]

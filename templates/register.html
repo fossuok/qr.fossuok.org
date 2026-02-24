@@ -71,7 +71,7 @@
             qrContainer.appendChild(serverQrWrapper);
 
             async function postToServerJson(obj) {
-                const res = await fetch('/api/register', {
+                const res = await fetch('/user/events/register', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(obj)
