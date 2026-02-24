@@ -44,28 +44,34 @@ async def github_callback(request: Request):
     Handle the callback from Supabase (PKCE flow).
     """
     code = request.query_params.get("code")
-
+    
     if not code:
-        # If no code in query, it's either an error or still using implicit flow
-        return {
-            "message": "Auth code not found. Please ensure PKCE is enabled in Supabase or check your redirect settings."}
+        return {"message": "Auth code not found. Please ensure PKCE is enabled in Supabase."}
 
     supabase_user = await handle_supabase_callback(code)
     if not supabase_user:
         raise HTTPException(status_code=401, detail="Supabase authentication failed")
 
-    session_user = SessionUser(
-        user_id=supabase_user.id,
-        name=supabase_user.user_metadata.get("full_name") or supabase_user.email,
-        email=supabase_user.email,
-        avatar_url=supabase_user.user_metadata.get("avatar_url")
-    )
+    # AUTO-REGISTRATION: Sync user data and link to active event
+    from services import auto_register_user
+    db_user = await auto_register_user(supabase_user)
 
+    session_user = SessionUser(
+        user_id=db_user["qr_code_data"],
+        name=db_user["name"],
+        email=db_user["email"],
+        avatar_url=db_user.get("avatar_url"),
+        role=db_user.get("role", "participant")
+    )
+    
     session_token: str = create_session_cookie(session_user.model_dump())
 
-    response = RedirectResponse(url="/admin/dashboard")
-
-    # Enable secure=True in production (requires HTTPS)
+    # ROLE-BASED REDIRECTION
+    redirect_url = "/admin/dashboard" if session_user.role == "admin" else "/user/registration-success"
+    response = RedirectResponse(url=redirect_url)
+    
+    # 86400 seconds = 24 hours
+    MAX_AGE = 86400
     is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
 
     response.set_cookie(
