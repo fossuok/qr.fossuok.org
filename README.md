@@ -119,3 +119,24 @@ Since the Supabase project already created, you have to add the following enviro
 13. Click on save and it will prompt you to redeploy the application.
 14. Click on redeploy and wait for the deployment to finish.
 15. App is ready!
+
+## Important Note - For login
+
+### 1. Participant Registration
+- **How to register**: Users simply log in using their GitHub account.
+- **Workflow**: Upon first login, the system automatically creates a profile and registers the user for the currently **Active Event**.
+- **QR Code**: A unique QR code is generated and automatically sent to the user's registered GitHub email address. It is also displayed on the registration success page.
+
+### 2. Admin Access
+- **How to login**: Admins also use the GitHub login flow.
+- **Granting Admin Rights**: Currently, there is no UI to promote a user to Admin. You must manually update the `role` column to `admin` in the Supabase `users` table for that specific user.
+- **Admin Dashboard**: Once the role is updated, the user will be redirected to the Admin Dashboard (`/admin/dashboard`) upon login.
+
+### 3. Event Management
+- **Active Event**: Registration only works if there is an event in the `events` table with `is_active` set to `true`.
+- **Management**: Currently, events must be created and managed directly via the Supabase dashboard.
+
+### 4. TODO: Missing Features / Future Improvements
+- **User Role Management UI**: No interface to manage user roles within the app.
+- **Event Management UI**: No interface to create or edit events.
+- **QR Recovery**: Users can only see their QR code during registration or in their email. There is no "My Profile" page yet.
