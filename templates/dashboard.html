@@ -1,106 +1,102 @@
 {% extends "layout.html" %}
 
-{% block title %}Dashboard — QR Manager{% endblock %}
-
-{% block head %}
-<style>
-    .avatar {
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 3px solid #dee2e6;
-    }
-
-    .avatar-placeholder {
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        background-color: #e9ecef;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        color: #6c757d;
-        border: 3px solid #dee2e6;
-    }
-
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: .5rem 0;
-        border-bottom: 1px solid #f1f3f5;
-        font-size: .92rem;
-    }
-
-    .info-row:last-child {
-        border-bottom: none;
-    }
-
-    .info-label {
-        color: #6c757d;
-        font-weight: 500;
-    }
-
-    .badge-verified {
-        background-color: #d1fae5;
-        color: #065f46;
-        font-size: .75rem;
-        padding: .25rem .6rem;
-        border-radius: 999px;
-        font-weight: 600;
-    }
-</style>
-{% endblock %}
+{% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-12 col-md-7 col-lg-6">
+<div class="row g-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="fw-bold mb-0">Event Overview</h2>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">
+                <i class="bi bi-calendar-check me-1"></i> Active Event
+            </span>
+        </div>
+        <p class="text-muted">Real-time stats for Open Dev Summit '26</p>
+    </div>
 
-        <!-- Profile card -->
-        <div class="card p-4 mb-4">
-            <div class="d-flex align-items-center gap-3 mb-4">
-                {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="GitHub avatar" class="avatar">
-                {% else %}
-                    <div class="avatar-placeholder">👤</div>
-                {% endif %}
-
-                <div>
-                    <h1 class="h5 fw-bold mb-0">{{ user.name or "GitHub User" }}</h1>
-                    <span class="badge-verified">✓ Verified via GitHub</span>
-                </div>
+    <!-- Stats Cards -->
+    <div class="col-6 col-md-3">
+        <div class="card p-3 border-0 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-2">Registered</div>
+            <div class="h2 fw-bold mb-0">{{ stats.total_registered }}</div>
+            <div class="text-primary small mt-2">
+                <i class="bi bi-people-fill"></i> Total users
             </div>
+        </div>
+    </div>
 
-            <div>
-                <div class="info-row">
-                    <span class="info-label">Email</span>
-                    <span>{{ user.email or "—  (email is private)" }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">User ID</span>
-                    <span class="font-monospace text-muted small">{{ user.user_id }}</span>
+    <div class="col-6 col-md-3">
+        <div class="card p-3 border-0 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-2">Attended</div>
+            <div class="h2 fw-bold mb-0">{{ stats.total_attended }}</div>
+            <div class="text-success small mt-2">
+                <i class="bi bi-check-circle-fill"></i> Verified scans
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card p-3 border-0 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-2">Waitlist</div>
+            <div class="h2 fw-bold mb-0">0</div>
+            <div class="text-muted small mt-2">
+                <i class="bi bi-clock-history"></i> Pending
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card p-3 border-0 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-2">Rate</div>
+            <div class="h2 fw-bold mb-0">{{ stats.attendance_rate }}%</div>
+            <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ stats.attendance_rate }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header bg-white py-3 border-bottom-0">
+                <h5 class="fw-bold mb-0">OC Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <a href="/admin/verify" class="btn btn-primary w-100 py-3">
+                            <i class="bi bi-camera-fill me-2 fs-5"></i>
+                            Start QR Scanner
+                        </a>
+                    </div>
+                    <div class="col-sm-6">
+                        <button class="btn btn-outline-secondary w-100 py-3" onclick="alert('Report generation coming soon!')">
+                            <i class="bi bi-file-earmark-spreadsheet me-2 fs-5"></i>
+                            Export Attendance
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Actions card -->
-        <div class="card p-4">
-            <h2 class="h6 fw-semibold text-muted text-uppercase mb-3" style="letter-spacing:.05em;">Quick Actions</h2>
-            <div class="d-grid gap-2">
-                <a href="/user/events" class="btn btn-outline-primary">
-                    Register for an Event
-                </a>
-                <a href="/admin/verify" class="btn btn-outline-secondary">
-                    Verify a QR Code
-                </a>
-                <a href="/auth/logout" class="btn btn-outline-danger" id="logout-btn">
-                    Sign Out
-                </a>
+    <!-- Admin info -->
+    <div class="col-md-4">
+        <div class="card h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <img src="{{ user.avatar_url or 'https://github.com/identicons/default.png' }}" 
+                         class="rounded-circle" width="48" height="48">
+                    <div>
+                        <h6 class="fw-bold mb-0">{{ user.name }}</h6>
+                        <span class="badge bg-secondary-subtle text-secondary small">Admin Role</span>
+                    </div>
+                </div>
+                <div class="small text-muted">
+                    Logged in as an OC member. You have permission to scan codes and view proprietary stats.
+                </div>
             </div>
         </div>
-
     </div>
 </div>
 {% endblock %}
