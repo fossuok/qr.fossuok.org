@@ -1,7 +1,7 @@
 [project]
-name = "qr"
-version = "0.1.0"
-description = "Add your description here"
+name = "fossuok-qr"
+version = "0.2.0"
+description = "QR-based event registration system for FOSSUoK"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -16,3 +16,9 @@ dependencies = [
     "qrcode>=8.2",
     "supabase>=2.28.0",
 ]
+
+[project.scripts]
+app = "main:app"
+
+[tool.vercel.scripts]
+build = "python build.py"

@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -22,7 +24,8 @@ async def registration_success(
     Shows a success message after automatic registration.
     """
     from services.user import generate_qr_data_url
-    qr_url = generate_qr_data_url(user.user_id)
+    # generate_qr_data_url is CPU-bound (qrcode.make); offload to a thread pool
+    qr_url = await asyncio.to_thread(generate_qr_data_url, user.user_id)
     
     return templates.TemplateResponse("success.html", {
         "request": request,

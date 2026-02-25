@@ -46,7 +46,18 @@ async def github_callback(request: Request, background_tasks: BackgroundTasks):
     code = request.query_params.get("code")
     
     if not code:
-        return {"message": "Auth code not found. Please ensure PKCE is enabled in Supabase."}
+        # Supabase may send error details when OAuth fails (stale session, etc.)
+        error = request.query_params.get("error", "unknown")
+        error_desc = request.query_params.get("error_description", "no code in callback")
+        
+        import logging
+        logging.getLogger("perf").info(
+            "AUTH_ERR |          | %s: %s | params=%s",
+            error, error_desc, dict(request.query_params),
+        )
+        
+        # Redirect back to login so the user can retry immediately
+        return RedirectResponse(url="/?error=login_failed")
 
     supabase_user = await handle_supabase_callback(code)
     if not supabase_user:
@@ -56,13 +67,16 @@ async def github_callback(request: Request, background_tasks: BackgroundTasks):
     from services import auto_register_user, send_qr_email
     db_user = await auto_register_user(supabase_user)
     
-    # Send QR email in background if it's a new registration or needs resending
+    # Send QR email in background if it's a new registration or needs resending.
+    # Pass the app-level shared httpx client to avoid a new TCP connection per email.
     if "qr_data_url" in db_user:
+        http_client = request.app.state.http_client
         background_tasks.add_task(
-            send_qr_email, 
-            db_user["email"], 
-            db_user["name"], 
-            db_user["qr_data_url"]
+            send_qr_email,
+            db_user["email"],
+            db_user["name"],
+            db_user["qr_data_url"],
+            http_client,
         )
 
     session_user = SessionUser(
