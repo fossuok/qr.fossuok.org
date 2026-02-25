@@ -20,15 +20,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-# ── Configure a dedicated file logger ────────────────────────
-
 LOG_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE = LOG_DIR / "perf.log"
 
 perf_logger = logging.getLogger("perf")
 perf_logger.setLevel(logging.DEBUG)
-perf_logger.propagate = False  # don't leak into uvicorn's console output
+perf_logger.propagate = False
 
 _handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
 _handler.setFormatter(
@@ -37,8 +35,7 @@ _handler.setFormatter(
 perf_logger.addHandler(_handler)
 
 
-# ── 1. Request / Response middleware ─────────────────────────
-
+# Request / Response middleware
 class PerfMiddleware(BaseHTTPMiddleware):
     """Logs method, path, status code, and wall-clock ms for every request."""
 
@@ -57,7 +54,7 @@ class PerfMiddleware(BaseHTTPMiddleware):
         return response
 
 
-# ── 2. Supabase DB-call profiling ────────────────────────────
+# Supabase DB-call profiling
 
 def patch_supabase_admin(admin_holder) -> None:
     """
@@ -89,7 +86,7 @@ def patch_supabase_admin(admin_holder) -> None:
     AsyncQueryRequestBuilder._perf_patched = True
 
 
-# ── 3. Sync auth call profiling ──────────────────────────────
+# Sync auth call profiling
 
 def patch_sync_auth(sync_client) -> None:
     """

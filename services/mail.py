@@ -15,15 +15,15 @@ _MAILJET_URL = "https://api.mailjet.com/v3.1/send"
 
 
 async def send_qr_email(
-    email: str,
-    name: str,
-    qr_data_url: str,
-    client: Optional[httpx.AsyncClient] = None,
+        email: str,
+        name: str,
+        qr_data_url: str,
+        client: Optional[httpx.AsyncClient] = None,
 ) -> None:
     """
     Sends an email with the QR code using MailJet API v3.1.
 
-    Pass a shared ``httpx.AsyncClient`` (from ``app.state.http_client``) to
+    Pass a shared `httpx.AsyncClient` (from `app.state.http_client`) to
     avoid creating a new TCP connection for every email.  If no client is
     provided a temporary one is created — useful for scripts and tests.
     """
