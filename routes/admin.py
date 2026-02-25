@@ -25,13 +25,9 @@ async def admin_dashboard(
     import asyncio
     
     try:
-        # Fetch stats concurrently
-        res_reg_task = asyncio.to_thread(
-            supabase_admin.table("users").select("id", count="exact").execute
-        )
-        res_att_task = asyncio.to_thread(
-            supabase_admin.table("users").select("id", count="exact").not_.is_("attended_at", "null").execute
-        )
+        # Fetch stats concurrently using the persistent async Supabase client
+        res_reg_task = supabase_admin.table("users").select("id", count="exact").execute()
+        res_att_task = supabase_admin.table("users").select("id", count="exact").not_.is_("attended_at", "null").execute()
         
         res_reg, res_att = await asyncio.gather(res_reg_task, res_att_task)
         
@@ -67,16 +63,15 @@ async def export_attendance(
 ):
     """Generates and streams a styled PDF attendance report."""
     from config.supabase import supabase_admin
-    import asyncio
 
-    # 1. Fetch all participants
+    # 1. Fetch all participants using the persistent async Supabase client
     try:
-        res = await asyncio.to_thread(
+        res = await (
             supabase_admin.table("users")
-            .select("*")
+            .select("name, email, role, attended_at")
             .eq("role", "participant")
             .order("name")
-            .execute
+            .execute()
         )
         users = res.data or []
     except Exception:

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import qrcode
 from fastapi import HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse
 
 from config.supabase import supabase_admin
 from schemas import CreateUser, VerifyUser
@@ -17,49 +17,63 @@ from .mail import send_qr_email
 async def auto_register_user(supabase_user) -> dict:
     """
     Automatically registers a user upon GitHub login.
-    Saves avatar, name, email, and links them to the active event.
-    Returns the user data for session creation.
+    Uses the persistent async Supabase client — no per-call connection overhead.
+    Event fetch and user-existence check run in parallel via asyncio.gather.
     """
     github_id = str(supabase_user.id)
     email = supabase_user.email
     name = supabase_user.user_metadata.get("full_name") or supabase_user.email
     avatar_url = supabase_user.user_metadata.get("avatar_url")
 
-    # 1. Fetch active event
     from .event import get_active_event
-    active_event = await get_active_event()
+
+    async def _fetch_existing_user():
+        try:
+            res = await (
+                supabase_admin.table("users")
+                .select("github_id, name, email, avatar_url, qr_code_data, role, registered_event_id, attended_at")
+                .eq("github_id", github_id)
+                .limit(1)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+
+    # Run event fetch and user lookup in parallel
+    active_event, user_record = await asyncio.gather(
+        get_active_event(),
+        _fetch_existing_user(),
+    )
+
     event_id = active_event.id if active_event else None
 
-    # 2. Check if user already exists
-    try:
-        existing = await asyncio.to_thread(
-            supabase_admin.table("users")
-            .select("*")
-            .eq("github_id", github_id)
-            .limit(1)
-            .execute
-        )
-        user_record = existing.data[0] if existing.data else None
-    except Exception:
-        user_record = None
-
     if user_record:
-        # Update info (avatar/name might change)
         update_data = {
             "name": name,
             "avatar_url": avatar_url,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        # If not registered for active event yet, link them
         if event_id and user_record.get("registered_event_id") != event_id:
             update_data["registered_event_id"] = event_id
-        
-        await asyncio.to_thread(
-            supabase_admin.table("users").update(update_data).eq("github_id", github_id).execute
-        )
+
+        # Fire-and-forget: the response only needs the merged dict,
+        # not the DB write to be confirmed.  Saves ~300ms.
+        async def _bg_update():
+            try:
+                await (
+                    supabase_admin.table("users")
+                    .update(update_data)
+                    .eq("github_id", github_id)
+                    .execute()
+                )
+            except Exception:
+                pass
+
+        asyncio.create_task(_bg_update())
         return {**user_record, **update_data}
 
-    # 3. Completely New User
+    # Completely new user
     new_qr_id = str(uuid.uuid4())
     new_user_data = {
         "github_id": github_id,
@@ -68,54 +82,51 @@ async def auto_register_user(supabase_user) -> dict:
         "avatar_url": avatar_url,
         "qr_code_data": new_qr_id,
         "registered_event_id": event_id,
-        "role": "participant"
+        "role": "participant",
     }
 
     try:
-        res = await asyncio.to_thread(
-            supabase_admin.table("users").insert(new_user_data).execute
-        )
+        res = await supabase_admin.table("users").insert(new_user_data).execute()
         created_user = res.data[0]
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Registration failed: {str(e)}")
 
-    # 4. Generate QR and Email
+    # Generate QR (CPU-bound) in a thread so it doesn't block the event loop
     qr_payload = {
-        "id": new_qr_id, 
-        "name": name, 
+        "id": new_qr_id,
+        "name": name,
         "email": email,
-        "event": active_event.title if active_event else "FOSSUoK Event"
+        "event": active_event.title if active_event else "FOSSUoK Event",
     }
-    qr_data_url = generate_qr_data_url(json.dumps(qr_payload, separators=(",", ":")))
-    
-    # Email will be handled as a background task by the caller (auth route)
-    # We return the email data along with the user record
+    qr_data_url = await asyncio.to_thread(
+        generate_qr_data_url, json.dumps(qr_payload, separators=(",", ":"))
+    )
+
     return {**created_user, "qr_data_url": qr_data_url}
 
 
 async def verify_user(qr_input: str) -> dict:
     """
-    Looks up a user in Supabase by their QR code data.
-    The input can be a raw UUID string or a JSON string containing an 'id' key.
+    Looks up a user by their QR code data and marks attendance.
+    The attendance UPDATE is fire-and-forget so the response returns immediately.
+    Uses the persistent async Supabase client — no per-call connection overhead.
     """
     search_id = qr_input
 
-    # Try to parse as JSON in case it's the full payload
     try:
         data = json.loads(qr_input)
         if isinstance(data, dict) and "id" in data:
             search_id = data["id"]
     except (json.JSONDecodeError, TypeError):
-        # Not JSON, assume it's the raw ID string
         pass
 
-    # Optimized: Only select needed columns
     try:
-        response = await asyncio.to_thread(
+        response = await (
             supabase_admin.table("users")
             .select("qr_code_data, name, email, attended_at")
             .eq("qr_code_data", search_id)
-            .execute
+            .limit(1)
+            .execute()
         )
         users_list = response.data
     except Exception as e:
@@ -128,18 +139,22 @@ async def verify_user(qr_input: str) -> dict:
     attended_at = user.get("attended_at")
     already_marked = bool(attended_at)
 
-    # 2. Update if not already marked
     if not already_marked:
         new_timestamp = datetime.now(timezone.utc).isoformat()
-        # Fire and forget update to database for attendance (or wait and return updated)
-        # We'll wait to ensure data consistency in the response
-        await asyncio.to_thread(
-            supabase_admin.table("users")
-            .update({"attended_at": new_timestamp})
-            .eq("qr_code_data", search_id)
-            .execute
-        )
-        user["attended_at"] = new_timestamp
+        # Fire-and-forget: return the response immediately
+        async def _update_attendance():
+            try:
+                await (
+                    supabase_admin.table("users")
+                    .update({"attended_at": new_timestamp})
+                    .eq("qr_code_data", search_id)
+                    .execute()
+                )
+            except Exception:
+                pass
+
+        asyncio.create_task(_update_attendance())
+        attended_at = new_timestamp
 
     return {
         "valid": True,
@@ -148,15 +163,13 @@ async def verify_user(qr_input: str) -> dict:
             "id": user["qr_code_data"],
             "name": user["name"],
             "email": user["email"],
-            "attended_at": user["attended_at"]
+            "attended_at": attended_at,
         },
     }
 
 
 def get_qr_image(qr_data: str) -> StreamingResponse:
-    """
-    Generates a QR code PNG and streams it as a downloadable file.
-    """
+    """Generates a QR code PNG and streams it as a downloadable file."""
     buf = io.BytesIO()
     qrcode.make(qr_data).save(buf, format="PNG")
     buf.seek(0)
@@ -165,7 +178,7 @@ def get_qr_image(qr_data: str) -> StreamingResponse:
 
 
 def generate_qr_data_url(text: str) -> str:
-    """Encodes a QR code as a base64 PNG data URL."""
+    """Encodes a QR code as a base64 PNG data URL. CPU-bound — call via asyncio.to_thread."""
     buf = io.BytesIO()
     qrcode.make(text).save(buf, format="PNG")
     buf.seek(0)
