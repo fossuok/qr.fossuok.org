@@ -4,10 +4,9 @@ This is a sample event registration system that uses QR codes to verify attendan
 
 ## Tech Stack
 
-- **FastAPI** — backend API and HTML page serving
-- **SQLAlchemy** + SQLite (prototype) / Supabase Postgres (production)
-- **Jinja2** — HTML templates
-- **qrcode** — server-side QR code generation
+- **FastAPI** - backend API and HTML page serving
+- **Supabase Postgres**
+- **Jinja2** - HTML templates
 
 ## Requirements
 
@@ -43,6 +42,10 @@ This is a sample event registration system that uses QR codes to verify attendan
     ```
    The app will be available at `http://localhost:8000`
 
+### Live Preview (For testing purposes only)
+
+- [Live Preview](https://qr.fossuok.org)
+
 ### GitHub (For Login)
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
@@ -66,7 +69,6 @@ This is a sample event registration system that uses QR codes to verify attendan
 | GET | `/admin/verify` | QR code scanning and verification page |
 
 > Interactive API documentation is available at `/docs` (Swagger UI) and `/redoc`.
-
 
 
 ## Project Structure
