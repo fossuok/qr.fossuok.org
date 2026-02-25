@@ -25,16 +25,17 @@ async def admin_dashboard(
     import asyncio
     
     try:
-        # Get total registered
-        res_reg = await asyncio.to_thread(
+        # Fetch stats concurrently
+        res_reg_task = asyncio.to_thread(
             supabase_admin.table("users").select("id", count="exact").execute
         )
-        total_registered = res_reg.count or 0
-        
-        # Get total attended (not null attended_at)
-        res_att = await asyncio.to_thread(
+        res_att_task = asyncio.to_thread(
             supabase_admin.table("users").select("id", count="exact").not_.is_("attended_at", "null").execute
         )
+        
+        res_reg, res_att = await asyncio.gather(res_reg_task, res_att_task)
+        
+        total_registered = res_reg.count or 0
         total_attended = res_att.count or 0
     except Exception:
         total_registered = 0

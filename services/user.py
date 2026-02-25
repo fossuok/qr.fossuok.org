@@ -88,10 +88,9 @@ async def auto_register_user(supabase_user) -> dict:
     }
     qr_data_url = generate_qr_data_url(json.dumps(qr_payload, separators=(",", ":")))
     
-    # Send email asynchronously
-    await send_qr_email(email, name, qr_data_url)
-
-    return created_user
+    # Email will be handled as a background task by the caller (auth route)
+    # We return the email data along with the user record
+    return {**created_user, "qr_data_url": qr_data_url}
 
 
 async def verify_user(qr_input: str) -> dict:
@@ -110,26 +109,30 @@ async def verify_user(qr_input: str) -> dict:
         # Not JSON, assume it's the raw ID string
         pass
 
+    # Optimized: Only select needed columns
     try:
         response = await asyncio.to_thread(
             supabase_admin.table("users")
-            .select("*")
+            .select("qr_code_data, name, email, attended_at")
             .eq("qr_code_data", search_id)
             .execute
         )
-        users = response.data
+        users_list = response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    if not users:
+    if not users_list:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user = users[0]
-    already_marked = bool(user.get("attended_at"))
+    user = users_list[0]
+    attended_at = user.get("attended_at")
+    already_marked = bool(attended_at)
 
-    # UPDATE: Mark attendance if not already marked
+    # 2. Update if not already marked
     if not already_marked:
         new_timestamp = datetime.now(timezone.utc).isoformat()
+        # Fire and forget update to database for attendance (or wait and return updated)
+        # We'll wait to ensure data consistency in the response
         await asyncio.to_thread(
             supabase_admin.table("users")
             .update({"attended_at": new_timestamp})
@@ -145,7 +148,7 @@ async def verify_user(qr_input: str) -> dict:
             "id": user["qr_code_data"],
             "name": user["name"],
             "email": user["email"],
-            "attended_at": user.get("attended_at") 
+            "attended_at": user["attended_at"]
         },
     }
 
