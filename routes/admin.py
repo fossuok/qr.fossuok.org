@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fpdf import FPDF
 import io
@@ -150,3 +150,106 @@ async def export_attendance(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=attendance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"}
     )
+
+
+@router.get("/users", response_class=HTMLResponse)
+async def admin_users(
+        request: Request,
+        user=Depends(get_current_user)
+):
+    """Admin page — lists all registered users with their roles."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+
+    try:
+        res = await (
+            supabase_admin.table("users")
+            .select("github_id, name, email, avatar_url, role, created_at")
+            .order("role")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        users_list = res.data or []
+    except Exception:
+        users_list = []
+
+    return templates.TemplateResponse("admin_users.html", {
+        "request": request,
+        "user": user,
+        "users_list": users_list,
+    })
+
+
+@router.post("/users/{github_id}/promote")
+async def promote_user(
+        github_id: str,
+        user=Depends(get_current_user)
+):
+    """Promote a user to admin role."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+
+    try:
+        await (
+            supabase_admin.table("users")
+            .update({"role": "admin"})
+            .eq("github_id", github_id)
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to promote user: {str(e)}")
+
+    return RedirectResponse(url="/admin/users?success=promoted", status_code=303)
+
+
+@router.post("/users/{github_id}/demote")
+async def demote_user(
+        github_id: str,
+        user=Depends(get_current_user)
+):
+    """Demote an admin back to participant role."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+
+    try:
+        await (
+            supabase_admin.table("users")
+            .update({"role": "participant"})
+            .eq("github_id", github_id)
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to demote user: {str(e)}")
+
+    return RedirectResponse(url="/admin/users?success=demoted", status_code=303)
+
+
+@router.post("/users/{github_id}/delete")
+async def delete_user(
+        github_id: str,
+        user=Depends(get_current_user)
+):
+    """Delete a user from the system."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+
+    try:
+        await (
+            supabase_admin.table("users")
+            .delete()
+            .eq("github_id", github_id)
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
+
+    return RedirectResponse(url="/admin/users?success=deleted", status_code=303)
+
