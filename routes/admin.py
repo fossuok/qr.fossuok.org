@@ -23,14 +23,14 @@ async def admin_dashboard(
     """Admin dashboard — shows event stats."""
     from config.supabase import supabase_admin
     import asyncio
-    
+
     try:
         # Fetch stats concurrently using the persistent async Supabase client
         res_reg_task = supabase_admin.table("users").select("id", count="exact").execute()
         res_att_task = supabase_admin.table("users").select("id", count="exact").not_.is_("attended_at", "null").execute()
-        
+
         res_reg, res_att = await asyncio.gather(res_reg_task, res_att_task)
-        
+
         total_registered = res_reg.count or 0
         total_attended = res_att.count or 0
     except Exception:
@@ -38,7 +38,7 @@ async def admin_dashboard(
         total_attended = 0
 
     return templates.TemplateResponse("dashboard.html", {
-        "request": request, 
+        "request": request,
         "user": user,
         "stats": {
             "total_registered": total_registered,
@@ -80,12 +80,12 @@ async def export_attendance(
     # 2. Create PDF
     pdf = FPDF()
     pdf.add_page()
-    
+
     # Header
     pdf.set_font("Arial", "B", 20)
     pdf.set_text_color(75, 46, 131)  # FOSSUOK Purple
     pdf.cell(0, 15, "Attendance Report", ln=True, align="C")
-    
+
     pdf.set_font("Arial", "", 10)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 5, f"Generated on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC", ln=True, align="C")
@@ -95,7 +95,7 @@ async def export_attendance(
     pdf.set_font("Arial", "B", 12)
     pdf.set_fill_color(75, 46, 131)
     pdf.set_text_color(255, 255, 255)
-    
+
     cols = [("Name", 60), ("Email", 70), ("Role", 30), ("Status", 30)]
     for col_name, width in cols:
         pdf.cell(width, 10, col_name, border=1, align="C", fill=True)
@@ -104,17 +104,17 @@ async def export_attendance(
     # Table Rows
     pdf.set_font("Arial", "", 10)
     pdf.set_text_color(0, 0, 0)
-    
+
     fill = False
     for u in users:
         # Zebra striping
         pdf.set_fill_color(245, 245, 245)
-        
+
         name = str(u.get("name", "N/A"))[:30]
         email = str(u.get("email", "N/A"))[:35]
         role = str(u.get("role", "participant")).capitalize()
         status = "Present" if u.get("attended_at") else "Absent"
-        
+
         # Adjusting font color for status
         pdf.set_font("Arial", "B" if status == "Present" else "", 10)
         if status == "Present":
@@ -129,7 +129,7 @@ async def export_attendance(
         pdf.set_font("Arial", "", 10)
         pdf.cell(70, h, email, border=1, fill=fill)
         pdf.cell(30, h, role, border=1, fill=fill)
-        
+
         # Status again
         pdf.set_font("Arial", "B" if status == "Present" else "", 10)
         if status == "Present":
@@ -137,14 +137,14 @@ async def export_attendance(
         else:
             pdf.set_text_color(220, 53, 69)
         pdf.cell(30, h, status, border=1, fill=fill, align="C")
-        
+
         pdf.set_text_color(0, 0, 0)
         pdf.ln()
         fill = not fill
 
     # 3. Output as stream
     pdf_output = pdf.output(dest='S')
-    
+
     return StreamingResponse(
         io.BytesIO(pdf_output),
         media_type="application/pdf",
@@ -253,3 +253,202 @@ async def delete_user(
 
     return RedirectResponse(url="/admin/users?success=deleted", status_code=303)
 
+
+@router.get("/events", response_class=HTMLResponse)
+async def admin_events(
+        request: Request,
+        user=Depends(get_current_user)
+):
+    """Admin page — lists all events."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+
+    try:
+        res = await (
+            supabase_admin.table("events")
+            .select("*")
+            .order("is_active", desc=True)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        events_list = res.data or []
+    except Exception:
+        events_list = []
+
+    return templates.TemplateResponse("admin_events.html", {
+        "request": request,
+        "user": user,
+        "events_list": events_list,
+    })
+
+
+@router.post("/events/create")
+async def create_event(
+        request: Request,
+        user=Depends(get_current_user)
+):
+    """Create a new event from form data."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+    from services.event import invalidate_event_cache
+
+    form = await request.form()
+
+    event_data = {
+        "title": form.get("title"),
+        "description": form.get("description") or None,
+        "location": form.get("location") or None,
+        "start_time": form.get("start_time") or None,
+        "end_time": form.get("end_time") or None,
+        "image_url": form.get("image_url") or None,
+        "is_active": form.get("is_active") == "on",
+    }
+
+    if not event_data["title"]:
+        raise HTTPException(status_code=400, detail="Title is required")
+
+    try:
+        # If activating this event, deactivate all others first
+        if event_data["is_active"]:
+            await (
+                supabase_admin.table("events")
+                .update({"is_active": False})
+                .eq("is_active", True)
+                .execute()
+            )
+
+        await supabase_admin.table("events").insert(event_data).execute()
+        invalidate_event_cache()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create event: {str(e)}")
+
+    return RedirectResponse(url="/admin/events?success=created", status_code=303)
+
+
+@router.post("/events/{event_id}/edit")
+async def edit_event(
+        event_id: str,
+        request: Request,
+        user=Depends(get_current_user)
+):
+    """Update an existing event from form data."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+    from services.event import invalidate_event_cache
+
+    form = await request.form()
+
+    update_data = {
+        "title": form.get("title"),
+        "description": form.get("description") or None,
+        "location": form.get("location") or None,
+        "start_time": form.get("start_time") or None,
+        "end_time": form.get("end_time") or None,
+        "image_url": form.get("image_url") or None,
+        "is_active": form.get("is_active") == "on",
+    }
+
+    if not update_data["title"]:
+        raise HTTPException(status_code=400, detail="Title is required")
+
+    try:
+        # If activating this event, deactivate all others first
+        if update_data["is_active"]:
+            await (
+                supabase_admin.table("events")
+                .update({"is_active": False})
+                .neq("id", event_id)
+                .eq("is_active", True)
+                .execute()
+            )
+
+        await (
+            supabase_admin.table("events")
+            .update(update_data)
+            .eq("id", event_id)
+            .execute()
+        )
+        invalidate_event_cache()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update event: {str(e)}")
+
+    return RedirectResponse(url="/admin/events?success=updated", status_code=303)
+
+
+@router.post("/events/{event_id}/toggle")
+async def toggle_event(
+        event_id: str,
+        user=Depends(get_current_user)
+):
+    """Toggle an event's active status. Deactivates all others when activating."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+    from services.event import invalidate_event_cache
+
+    try:
+        # Get current status
+        res = await (
+            supabase_admin.table("events")
+            .select("is_active")
+            .eq("id", event_id)
+            .single()
+            .execute()
+        )
+        current_active = res.data.get("is_active", False)
+        new_active = not current_active
+
+        if new_active:
+            # Deactivate all others first
+            await (
+                supabase_admin.table("events")
+                .update({"is_active": False})
+                .eq("is_active", True)
+                .execute()
+            )
+
+        await (
+            supabase_admin.table("events")
+            .update({"is_active": new_active})
+            .eq("id", event_id)
+            .execute()
+        )
+        invalidate_event_cache()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to toggle event: {str(e)}")
+
+    status = "activated" if new_active else "deactivated"
+    return RedirectResponse(url=f"/admin/events?success={status}", status_code=303)
+
+
+@router.post("/events/{event_id}/delete")
+async def delete_event(
+        event_id: str,
+        user=Depends(get_current_user)
+):
+    """Delete an event."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from config.supabase import supabase_admin
+    from services.event import invalidate_event_cache
+
+    try:
+        await (
+            supabase_admin.table("events")
+            .delete()
+            .eq("id", event_id)
+            .execute()
+        )
+        invalidate_event_cache()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete event: {str(e)}")
+
+    return RedirectResponse(url="/admin/events?success=event_deleted", status_code=303)
