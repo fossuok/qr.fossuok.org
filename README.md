@@ -18,7 +18,7 @@ This is a sample event registration system that uses QR codes to verify attendan
 
 1. Clone the repo
     ```bash
-    git clone https://github.com/DasunNethsara-04/test-qr-app.git
+    git clone https://github.com/fossuok/qr.fossuok.org
     cd qr.fossuok.org
     ```
 
