@@ -5,7 +5,7 @@ This is a sample event registration system that uses QR codes to verify attendan
 ## Tech Stack
 
 - **FastAPI** — backend API and HTML page serving
-- **SQLAlchemy** + SQLite (prototype) / Supabase Postgres (production)
+- **Supabase** — Postgres database and GitHub OAuth
 - **Jinja2** — HTML templates
 - **qrcode** — server-side QR code generation
 
@@ -64,6 +64,9 @@ This is a sample event registration system that uses QR codes to verify attendan
 | GET | `/user/registration-success` | Registration success page with QR code |
 | GET | `/admin/dashboard` | Admin dashboard with event stats |
 | GET | `/admin/verify` | QR code scanning and verification page |
+| GET | `/admin/users` | User management — list, promote, demote, delete |
+| GET | `/admin/events` | Event management — create, edit, toggle, delete |
+| GET | `/admin/export-attendance` | Export attendance report as PDF |
 
 > Interactive API documentation is available at `/docs` (Swagger UI) and `/redoc`.
 
@@ -72,8 +75,8 @@ This is a sample event registration system that uses QR codes to verify attendan
 ## Project Structure
 
 ```
-├── config/          # Database connection and session setup
-├── models/          # SQLAlchemy ORM models
+├── config/          # Supabase client setup (sync auth + async admin)
+├── models/          # Pydantic data models
 ├── routes/          # HTTP route handlers (thin layer)
 ├── schemas/         # Pydantic request/response schemas
 ├── services/        # Business logic (QR generation, user registration, verification)
@@ -129,14 +132,12 @@ Since the Supabase project already created, you have to add the following enviro
 
 ### 2. Admin Access
 - **How to login**: Admins also use the GitHub login flow.
-- **Granting Admin Rights**: Currently, there is no UI to promote a user to Admin. You must manually update the `role` column to `admin` in the Supabase `users` table for that specific user.
+- **Granting Admin Rights**: The first admin must be set manually in the Supabase `users` table (`role` → `admin`). After that, existing admins can promote/demote users from the **User Management** page (`/admin/users`).
 - **Admin Dashboard**: Once the role is updated, the user will be redirected to the Admin Dashboard (`/admin/dashboard`) upon login.
 
 ### 3. Event Management
-- **Active Event**: Registration only works if there is an event in the `events` table with `is_active` set to `true`.
-- **Management**: Currently, events must be created and managed directly via the Supabase dashboard.
+- **Active Event**: Registration only works if there is an event with `is_active` set to `true`.
+- **Management**: Events can be created, edited, activated/deactivated, and deleted from the **Event Management** page (`/admin/events`). Activating an event automatically deactivates all others.
 
 ### 4. TODO: Missing Features / Future Improvements
-- **User Role Management UI**: No interface to manage user roles within the app.
-- **Event Management UI**: No interface to create or edit events.
 - **QR Recovery**: Users can only see their QR code during registration or in their email. There is no "My Profile" page yet.
