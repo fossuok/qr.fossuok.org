@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException
-from schemas import VerifyUser
 from services import verify_user
 
 router: APIRouter = APIRouter(
