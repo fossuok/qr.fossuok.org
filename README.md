@@ -4,10 +4,10 @@ This is a sample event registration system that uses QR codes to verify attendan
 
 ## Tech Stack
 
-- **FastAPI** — backend API and HTML page serving
-- **Supabase** — Postgres database and GitHub OAuth
-- **Jinja2** — HTML templates
-- **qrcode** — server-side QR code generation
+- **FastAPI** - backend API and HTML page serving
+- **Supabase** - Postgres database and GitHub OAuth
+- **Jinja2** - HTML templates
+- **qrcode** - server-side QR code generation
 
 ## Requirements
 
