@@ -10,8 +10,7 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 from config.supabase import supabase_admin
-from schemas import CreateUser, VerifyUser
-from .mail import send_qr_email
+from .event import get_active_event
 
 
 async def auto_register_user(supabase_user) -> dict:
@@ -24,8 +23,6 @@ async def auto_register_user(supabase_user) -> dict:
     email = supabase_user.email
     name = supabase_user.user_metadata.get("full_name") or supabase_user.email
     avatar_url = supabase_user.user_metadata.get("avatar_url")
-
-    from .event import get_active_event
 
     async def _fetch_existing_user():
         try:
@@ -141,6 +138,7 @@ async def verify_user(qr_input: str) -> dict:
 
     if not already_marked:
         new_timestamp = datetime.now(timezone.utc).isoformat()
+
         # Fire-and-forget: return the response immediately
         async def _update_attendance():
             try:

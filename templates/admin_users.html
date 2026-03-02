@@ -1,0 +1,381 @@
+{% extends "layout.html" %}
+
+{% block title %}Manage Users - Admin{% endblock %}
+
+{% block head %}
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<style>
+    .users-table-wrap {
+        border-radius: 1.5rem;
+        overflow: hidden;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+
+    .users-table {
+        margin-bottom: 0;
+    }
+
+    .users-table thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.06em;
+        padding: 1rem 1.25rem;
+        border: none;
+        border-bottom: 2px solid #e2e8f0;
+        white-space: nowrap;
+    }
+
+    .users-table tbody td {
+        padding: 0.85rem 1.25rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem;
+    }
+
+    .users-table tbody tr {
+        transition: background 0.15s ease;
+    }
+
+    .users-table tbody tr:hover {
+        background-color: rgba(168, 85, 247, 0.04);
+    }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e2e8f0;
+        transition: border-color 0.2s ease;
+    }
+
+    .users-table tbody tr:hover .user-avatar {
+        border-color: var(--bs-primary);
+    }
+
+    .badge-admin {
+        background: linear-gradient(135deg, #a855f7, #7c3aed);
+        color: #fff;
+        font-weight: 600;
+        padding: 0.35em 0.85em;
+        border-radius: 999px;
+        font-size: 0.78rem;
+    }
+
+    .badge-participant {
+        background: rgba(20, 184, 166, 0.12);
+        color: #0d9488;
+        font-weight: 600;
+        padding: 0.35em 0.85em;
+        border-radius: 999px;
+        font-size: 0.78rem;
+    }
+
+    .btn-promote {
+        background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 0.4rem 1.1rem;
+        border-radius: 0.75rem;
+        border: none;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(168, 85, 247, 0.25);
+    }
+
+    .btn-promote:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+        filter: brightness(1.08);
+        color: #fff;
+    }
+
+    .btn-delete {
+        background: transparent;
+        color: #ef4444;
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 0.4rem 1.1rem;
+        border-radius: 0.75rem;
+        border: 2px solid #fecaca;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-delete:hover {
+        background: #ef4444;
+        color: #fff;
+        border-color: #ef4444;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-demote {
+        background: transparent;
+        color: #f59e0b;
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 0.4rem 1.1rem;
+        border-radius: 0.75rem;
+        border: 2px solid #fde68a;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-demote:hover {
+        background: #f59e0b;
+        color: #fff;
+        border-color: #f59e0b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+
+    .search-box {
+        border-radius: 1rem;
+        border: 2px solid #e2e8f0;
+        padding: 0.7rem 1.2rem 0.7rem 2.8rem;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .search-box:focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+        outline: none;
+    }
+
+    .search-wrap {
+        position: relative;
+    }
+
+    .search-wrap i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 1rem;
+    }
+
+    .user-count-badge {
+        background: rgba(168, 85, 247, 0.1);
+        color: var(--bs-primary);
+        font-weight: 700;
+        padding: 0.4em 1em;
+        border-radius: 999px;
+        font-size: 0.85rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Header -->
+    <div class="col-12">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-2">
+            <div>
+                <h2 class="fw-bold mb-1">Manage Users</h2>
+                <p class="text-muted mb-0">View all registered users and manage admin roles</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="user-count-badge">
+                    <i class="bi bi-people-fill me-1"></i>{{ users_list | length }} users
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="col-12">
+        <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" id="userSearch" class="search-box" placeholder="Search by name or email…">
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="col-12">
+        {% if users_list %}
+        <div class="users-table-wrap">
+            <table class="table users-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users_list %}
+                    <tr class="user-row">
+                        <td>
+                            <img src="{{ u.avatar_url or 'https://github.com/identicons/default.png' }}"
+                                 alt="{{ u.name }}" class="user-avatar">
+                        </td>
+                        <td class="fw-medium user-name">{{ u.name }}</td>
+                        <td class="text-muted user-email">{{ u.email or '—' }}</td>
+                        <td>
+                            {% if u.role == 'admin' %}
+                                <span class="badge-admin"><i class="bi bi-shield-check me-1"></i>Admin</span>
+                            {% else %}
+                                <span class="badge-participant"><i class="bi bi-person me-1"></i>Participant</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">
+                            {{ u.created_at[:10] if u.created_at else '—' }}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2">
+                                {% if u.role != 'admin' %}
+                                <button type="button" class="btn-promote"
+                                        data-action="promote"
+                                        data-name="{{ u.name }}"
+                                        data-url="/admin/users/{{ u.github_id }}/promote">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>Promote
+                                </button>
+                                {% elif u.email != user.email %}
+                                <button type="button" class="btn-demote"
+                                        data-action="demote"
+                                        data-name="{{ u.name }}"
+                                        data-url="/admin/users/{{ u.github_id }}/demote">
+                                    <i class="bi bi-arrow-down-circle me-1"></i>Demote
+                                </button>
+                                {% endif %}
+                                {% if u.email != user.email %}
+                                <button type="button" class="btn-delete"
+                                        data-action="delete"
+                                        data-name="{{ u.name }}"
+                                        data-url="/admin/users/{{ u.github_id }}/delete">
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p class="mb-0 fw-medium">No users registered yet</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+(function () {
+    /* ── Search ── */
+    document.getElementById('userSearch').addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('.user-row').forEach(function (row) {
+            const name = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
+            const email = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
+            row.style.display = (name.includes(q) || email.includes(q)) ? '' : 'none';
+        });
+    });
+
+    /* ── Confirm + Submit via SweetAlert2 ── */
+    function handleAction(btn) {
+        const action = btn.dataset.action;
+        const name   = btn.dataset.name;
+        const url    = btn.dataset.url;
+
+        const config = {
+            promote: {
+                title: 'Promote to Admin',
+                html: 'Are you sure you want to promote <strong>' + name + '</strong> to admin?<br><small class="text-muted">They will gain full admin privileges.</small>',
+                icon: 'question', iconColor: '#a855f7',
+                confirmButtonText: 'Yes, Promote', confirmButtonColor: '#a855f7'
+            },
+            demote: {
+                title: 'Demote to Participant',
+                html: 'Are you sure you want to demote <strong>' + name + '</strong>?<br><small class="text-muted">They will lose admin privileges.</small>',
+                icon: 'warning', iconColor: '#f59e0b',
+                confirmButtonText: 'Yes, Demote', confirmButtonColor: '#f59e0b'
+            },
+            delete: {
+                title: 'Delete User',
+                html: 'Are you sure you want to delete <strong>' + name + '</strong>?<br><small class="text-muted">This action cannot be undone.</small>',
+                icon: 'warning', iconColor: '#ef4444',
+                confirmButtonText: 'Yes, Delete', confirmButtonColor: '#ef4444'
+            }
+        }[action];
+
+        Swal.fire({
+            ...config,
+            showCancelButton: true,
+            cancelButtonText: 'Cancel',
+            cancelButtonColor: '#64748b',
+            reverseButtons: true,
+            customClass: { popup: 'rounded-4' }
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                // Submit via hidden form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    document.querySelectorAll('[data-action]').forEach(function (btn) {
+        btn.addEventListener('click', function () { handleAction(btn); });
+    });
+
+    /* ── Success Toast via SweetAlert2 ── */
+    const params  = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+
+    if (success) {
+        window.history.replaceState({}, '', window.location.pathname);
+
+        const messages = {
+            promoted: { title: 'User Promoted!', text: 'The user now has admin privileges.' },
+            demoted:  { title: 'User Demoted',   text: 'The user is now a participant.' },
+            deleted:  { title: 'User Deleted',    text: 'The user has been removed from the system.' }
+        };
+        const msg = messages[success] || { title: 'Done!', text: '' };
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.title,
+            text: msg.text,
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true
+        });
+    }
+})();
+</script>
+{% endblock %}

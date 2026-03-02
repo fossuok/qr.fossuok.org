@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from services import get_qr_image
+from services.user import generate_qr_data_url
 from routes.auth import get_current_user
 
 router: APIRouter = APIRouter(
@@ -23,7 +24,6 @@ async def registration_success(
     """
     Shows a success message after automatic registration.
     """
-    from services.user import generate_qr_data_url
     # generate_qr_data_url is CPU-bound (qrcode.make); offload to a thread pool
     qr_url = await asyncio.to_thread(generate_qr_data_url, user.user_id)
     
