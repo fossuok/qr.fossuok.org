@@ -2,7 +2,7 @@
 {% block title %}Register & Download QR{% endblock %}
 
 {% block content %}
-    <div class="card p-4">
+    <div class="card register-card p-4">
         <h3 class="mb-3">Register and get your QR</h3>
 
         <form id="registerForm" class="row g-3">
@@ -17,7 +17,7 @@
                        required>
             </div>
 
-            <div class="col-12 d-flex gap-2">
+            <div class="col-12 d-flex flex-wrap gap-2 register-actions">
                 <button type="submit" class="btn btn-primary">Generate & Download QR</button>
                 <button type="button" id="generatePreview" class="btn btn-outline-secondary">Preview only</button>
             </div>

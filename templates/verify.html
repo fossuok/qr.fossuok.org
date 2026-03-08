@@ -4,14 +4,14 @@
 {% block content %}
 <div class="row g-4 align-items-center">
     <div class="col-12 col-lg-7">
-        <div class="card overflow-hidden border-0 shadow-sm bg-white">
+        <div class="card scanner-card overflow-hidden border-0 shadow-sm bg-white">
             <div class="card-header bg-dark text-white px-4 py-3 border-0">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="fw-bold mb-0 text-white"><i class="bi bi-camera me-2"></i> Live Scanner</h5>
                     <span id="scanStatus" class="badge bg-danger rounded-pill px-3">Idle</span>
                 </div>
             </div>
-            <div class="card-body p-0 position-relative bg-black" style="min-height: 480px;">
+            <div class="card-body p-0 position-relative bg-black scanner-video-area" style="min-height: 480px;">
                 <!-- Video element for camera stream -->
                 <video id="video" autoplay muted playsinline
                        class="w-100 h-100 object-fit-cover" style="min-height: 480px;"></video>
@@ -19,7 +19,7 @@
                 <canvas id="canvas" style="display:none;"></canvas>
                 
                 <!-- Scanning Overlay -->
-                <div class="position-absolute top-50 start-50 translate-middle w-50 h-50 border border-3 border-primary opacity-50 rounded-4 pointer-events-none" 
+                <div class="position-absolute top-50 start-50 translate-middle w-50 h-50 border border-3 border-primary opacity-50 rounded-4 pointer-events-none scanner-overlay" 
                      id="scanOverlay" style="box-shadow: 0 0 0 2000px rgba(0,0,0,0.5);"></div>
             </div>
             <div class="card-footer bg-white border-0 py-4 px-4 text-center">

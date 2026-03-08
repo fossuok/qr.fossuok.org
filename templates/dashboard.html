@@ -3,9 +3,9 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<div class="row g-4">
+<div class="row g-3 g-md-4">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 dashboard-header">
             <h2 class="fw-bold mb-0">Event Overview</h2>
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">
                 <i class="bi bi-calendar-check me-1"></i> Active Event
@@ -16,9 +16,9 @@
 
     <!-- Stats Cards -->
     <div class="col-6 col-md-3">
-        <div class="card p-3 border-0 bg-white h-100">
+        <div class="card stat-card p-3 border-0 bg-white h-100">
             <div class="text-muted small fw-bold text-uppercase mb-2">Registered</div>
-            <div class="h2 fw-bold mb-0">{{ stats.total_registered }}</div>
+            <div class="h2 fw-bold mb-0 stat-value">{{ stats.total_registered }}</div>
             <div class="text-primary small mt-2">
                 <i class="bi bi-people-fill"></i> Total users
             </div>
@@ -26,9 +26,9 @@
     </div>
 
     <div class="col-6 col-md-3">
-        <div class="card p-3 border-0 bg-white h-100">
+        <div class="card stat-card p-3 border-0 bg-white h-100">
             <div class="text-muted small fw-bold text-uppercase mb-2">Attended</div>
-            <div class="h2 fw-bold mb-0">{{ stats.total_attended }}</div>
+            <div class="h2 fw-bold mb-0 stat-value">{{ stats.total_attended }}</div>
             <div class="text-success small mt-2">
                 <i class="bi bi-check-circle-fill"></i> Verified scans
             </div>
@@ -36,9 +36,9 @@
     </div>
 
     <div class="col-6 col-md-3">
-        <div class="card p-3 border-0 bg-white h-100">
+        <div class="card stat-card p-3 border-0 bg-white h-100">
             <div class="text-muted small fw-bold text-uppercase mb-2">Rate</div>
-            <div class="h2 fw-bold mb-0">{{ stats.attendance_rate }}%</div>
+            <div class="h2 fw-bold mb-0 stat-value">{{ stats.attendance_rate }}%</div>
             <div class="progress mt-2" style="height: 6px;">
                 <div class="progress-bar bg-primary" role="progressbar" style="width: {{ stats.attendance_rate }}%"></div>
             </div>
@@ -51,7 +51,7 @@
             <div class="card-header bg-white py-3 border-bottom-0">
                 <h5 class="fw-bold mb-0">OC Quick Actions</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body dashboard-actions">
                 <div class="row g-3">
                     <div class="col-sm-6">
                         <a href="/admin/verify" class="btn btn-primary w-100 py-3">

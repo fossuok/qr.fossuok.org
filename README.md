@@ -7,6 +7,8 @@ This is a sample event registration system that uses QR codes to verify attendan
 - **FastAPI** - backend API and HTML page serving
 - **Supabase Postgres**
 - **Jinja2** - HTML templates
+- **Bootstrap 5** - UI framework
+- **Custom CSS** - consolidated external stylesheet (`static/css/styles.css`), mobile-first responsive
 
 ## Requirements
 
@@ -82,6 +84,9 @@ This is a sample event registration system that uses QR codes to verify attendan
 ├── routes/          # HTTP route handlers (thin layer)
 ├── schemas/         # Pydantic request/response schemas
 ├── services/        # Business logic (QR generation, user registration, verification)
+├── static/
+│   └── css/
+│       └── styles.css  # Consolidated stylesheet (all pages)
 ├── templates/       # Jinja2 HTML templates
 ├── main.py          # App entry point — lifespan, middleware, router registration
 ├── pyproject.toml   # Project metadata and dependencies
