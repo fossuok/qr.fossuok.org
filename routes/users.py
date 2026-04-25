@@ -30,6 +30,8 @@ templates = Jinja2Templates(directory="templates")
 STUDY_YEARS = ["Year 1", "Year 2", "Year 3", "Year 4", "Postgraduate"]
 
 
+# ── Profile completion ──────────────────────────────────────────────────────
+
 @router.get("/complete-profile", response_class=HTMLResponse)
 async def complete_profile_page(request: Request, user=Depends(get_current_user)):
     """Show affiliation form for new users. Skip if already complete."""
@@ -159,27 +161,14 @@ async def download_registration_qr(
 # ── Legacy routes ────────────────────────────────────────────────────────────
 
 @router.get("/registration-success", response_class=HTMLResponse)
-async def registration_success(
-    request: Request,
-    user=Depends(get_current_user)
-):
-    """
-    Shows a success message after automatic registration.
-    """
-    # generate_qr_data_url is CPU-bound (qrcode.make); offload to a thread pool
-    qr_url = await asyncio.to_thread(_generate_qr_data_url, user.user_id)
-    
-    return templates.TemplateResponse("success.html", {
-        "request": request,
-        "user": user,
-        "qr_data_url": qr_url,
-        "status": "Verified & Registered"
-    })
+async def registration_success(request: Request, user=Depends(get_current_user)):
+    """Kept for backward compatibility — redirects to the new events page."""
+    return RedirectResponse(url="/user/events", status_code=302)
 
 
 @router.get("/events/{qr_data}/qr")
 async def download_qr(qr_data: str):
-    """Stream a QR code PNG for the given data string as a file download."""
+    """Stream a legacy user-level QR code PNG."""
     try:
         return get_qr_image(qr_data)
     except Exception as e:
