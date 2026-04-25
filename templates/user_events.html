@@ -1,77 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}My Events – FOSSUoK{% endblock %}
 
-{% block head %}
-<style>
-/* ── Page layout ──────────────────────────────────────────── */
-.ue-header { margin-bottom: 2rem; }
-.ue-header h2 { font-size: 1.7rem; font-weight: 800; margin-bottom: .25rem; }
-.ue-header p  { color: var(--text-muted, #6b7280); margin: 0; }
-
-/* ── Section headings ─────────────────────────────────────── */
-.section-label {
-    font-size: .7rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: #9ca3af;
-    margin-bottom: .75rem;
-}
-
-/* ── Event cards ──────────────────────────────────────────── */
-.ec {
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 1.4rem 1.5rem;
-    transition: box-shadow .18s, transform .18s;
-    position: relative;
-    overflow: hidden;
-}
-.ec:hover { box-shadow: 0 8px 24px rgba(0,0,0,.08); transform: translateY(-2px); }
-.ec.available { border-color: #a5b4fc; background: linear-gradient(135deg,#faf5ff,#f0f4ff); }
-
-.ec-badge {
-    display: inline-flex; align-items: center; gap: .35rem;
-    font-size: .72rem; font-weight: 700; padding: .28rem .7rem;
-    border-radius: 20px; margin-bottom: .75rem;
-}
-.ec-badge.registered { background: #d1fae5; color: #065f46; }
-.ec-badge.attended   { background: #fef3c7; color: #92400e; }
-.ec-badge.open       { background: #ede9fe; color: #5b21b6; }
-
-.ec-title    { font-size: 1.05rem; font-weight: 700; color: #111827; margin-bottom: .3rem; }
-.ec-meta     { font-size: .8rem; color: #6b7280; display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1rem; }
-.ec-meta i   { color: #a855f7; }
-
-/* ── Action buttons ───────────────────────────────────────── */
-.btn-register {
-    display: inline-flex; align-items: center; gap: .4rem;
-    background: linear-gradient(135deg,#a855f7,#6366f1);
-    color: #fff; border: none; border-radius: 10px;
-    padding: .55rem 1.2rem; font-size: .88rem; font-weight: 600;
-    cursor: pointer; transition: opacity .18s, transform .18s;
-    text-decoration: none;
-}
-.btn-register:hover  { opacity: .9; transform: translateY(-1px); color: #fff; }
-.btn-register:active { transform: scale(.97); }
-.btn-register:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-.btn-qr {
-    display: inline-flex; align-items: center; gap: .35rem;
-    background: #f3f4f6; color: #374151; border: 1.5px solid #e5e7eb;
-    border-radius: 10px; padding: .45rem 1rem;
-    font-size: .82rem; font-weight: 600; text-decoration: none;
-    transition: background .15s, border-color .15s;
-}
-.btn-qr:hover { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
-
-/* ── Empty state ──────────────────────────────────────────── */
-.empty-card {
-    background: #fff; border: 1.5px dashed #e5e7eb;
-    border-radius: 16px; padding: 2.5rem;
-    text-align: center; color: #9ca3af;
-}
-.empty-card i { font-size: 2.5rem; display: block; margin-bottom: .75rem; color: #d1d5db; }
-</style>
-{% endblock %}
+{% block head %}{% endblock %}
 
 {% block content %}
 <div class="row g-4">
@@ -173,22 +103,5 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-(function () {
-    const p = new URLSearchParams(window.location.search);
-    if (p.has('registered')) {
-        window.history.replaceState({}, '', window.location.pathname);
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'Registered!',
-            text: 'Your QR code has been emailed to you.',
-            showConfirmButton: false,
-            timer: 4500,
-            timerProgressBar: true,
-        });
-    }
-})();
-</script>
+<script src="/static/js/user_events.js"></script>
 {% endblock %}
