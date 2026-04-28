@@ -7,13 +7,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from routes.auth import get_current_user
-from schemas.user import CompleteProfileRequest
+from api.v1.auth import get_current_user
+from schema.user import CompleteProfileRequest
 from services import get_qr_image
 from services.mail import send_qr_email
 from services.registration import (
     get_user_registrations,
-    get_available_events_for_user,
+    get_all_active_events,
     register_for_event as _register_for_event,
     get_registration_qr_payload,
     _generate_qr_data_url,
@@ -25,12 +25,12 @@ router: APIRouter = APIRouter(
     tags=["User"]
 )
 
-templates = Jinja2Templates(directory="templates")
+templates: Jinja2Templates = Jinja2Templates(directory="templates")
 
-STUDY_YEARS = ["Year 1", "Year 2", "Year 3", "Year 4", "Postgraduate"]
+STUDY_YEARS: list[str] = ["Year 1", "Year 2", "Year 3", "Year 4", "Postgraduate"]
 
 
-# ── Profile completion ──────────────────────────────────────────────────────
+# Profile completion
 
 @router.get("/complete-profile", response_class=HTMLResponse)
 async def complete_profile_page(request: Request, user=Depends(get_current_user)):
@@ -88,8 +88,7 @@ async def submit_complete_profile(
     return RedirectResponse(url="/user/events", status_code=302)
 
 
-# ── Event selection & registration ─────────────────────────────────────────
-
+# Event selection & registration
 @router.get("/events", response_class=HTMLResponse)
 async def user_events_page(request: Request, user=Depends(get_current_user)):
     """
@@ -100,10 +99,18 @@ async def user_events_page(request: Request, user=Depends(get_current_user)):
     if not profile or not profile.get("participant_type"):
         return RedirectResponse(url="/user/complete-profile", status_code=302)
 
-    registrations, available = await asyncio.gather(
+    registrations, active_events = await asyncio.gather(
         get_user_registrations(user.user_id),
-        get_available_events_for_user(user.user_id),
+        get_all_active_events(),
     )
+
+    # Merge event details into registrations in the router
+    events_by_id = {str(e["id"]): e for e in active_events}
+    for reg in registrations:
+        reg["event"] = events_by_id.get(str(reg["event_id"]), {})
+
+    registered_ids = {str(r["event_id"]) for r in registrations}
+    available = [e for e in active_events if str(e["id"]) not in registered_ids]
 
     return templates.TemplateResponse("user_events.html", {
         "request": request,
@@ -158,7 +165,7 @@ async def download_registration_qr(
     )
 
 
-# ── Legacy routes ────────────────────────────────────────────────────────────
+# Legacy routes
 
 @router.get("/registration-success", response_class=HTMLResponse)
 async def registration_success(request: Request, user=Depends(get_current_user)):

@@ -12,6 +12,7 @@ class Event(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     image_url: Optional[str] = None
+    whatsapp_link: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
 

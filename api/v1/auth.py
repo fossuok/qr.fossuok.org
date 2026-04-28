@@ -4,7 +4,7 @@ from typing import Final
 from fastapi import APIRouter, HTTPException, Cookie, Request, BackgroundTasks
 from starlette.responses import RedirectResponse
 
-from schemas import SessionUser
+from schema import SessionUser
 from services import (
     build_github_redirect_url,
     decode_session_cookie,

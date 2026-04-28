@@ -6,11 +6,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-# Patch sync auth client for timing
+from api.v1 import users, auth, admin, api
 from config.supabase import supabase as sync_supabase
 from config.supabase import supabase_admin
 from middleware.perf_logger import PerfMiddleware, patch_supabase_admin, patch_sync_auth
-from routes import users, auth, admin, api
 from services.event import get_active_event
 
 

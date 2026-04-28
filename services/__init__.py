@@ -14,7 +14,7 @@ from .mail import send_qr_email
 from .event import get_active_event, get_event_by_id
 from .registration import (
     get_user_registrations,
-    get_available_events_for_user,
+    get_all_active_events,
     register_for_event,
     verify_registration,
     get_registration_qr_payload,
@@ -37,7 +37,7 @@ __all__ = [
     "get_active_event",
     "get_event_by_id",
     "get_user_registrations",
-    "get_available_events_for_user",
+    "get_all_active_events",
     "register_for_event",
     "verify_registration",
     "get_registration_qr_payload",

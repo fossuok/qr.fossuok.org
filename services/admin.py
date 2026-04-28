@@ -2,50 +2,49 @@ import asyncio
 from collections import defaultdict
 from datetime import datetime, timezone
 
+from cachetools import TTLCache
 from fpdf import FPDF
 
-from config.supabase import supabase_admin
+from repository.user_repo import (
+    get_registered_participant_count, get_all_participants as get_all_participants_repo,
+    get_users_by_qr_codes, get_paginated_users as get_paginated_users_repo,
+    update_user_by_github_id, delete_user_by_github_id, get_user_by_github_id
+)
+from repository.registration_repo import (
+    get_attended_count, get_all_registrations, get_registrations_for_event,
+    delete_registrations_for_user
+)
+from repository.event_repo import get_event_by_id
+
+_stat_cache = TTLCache(maxsize=1, ttl=60)  # 1 minute
+_paginated_users_cache = TTLCache(maxsize=50, ttl=30)  # 30 seconds only
 
 
-# user management
 async def fetch_user_stat():
-    try:
-        res_reg_task = supabase_admin.table("users").select("id", count="exact").eq("role", "participant").execute()
-        # Fetch all attended registrations and count DISTINCT users
-        res_att_task = (
-            supabase_admin.table("registrations")
-            .select("user_qr_code")
-            .not_.is_("attended_at", "null")
-            .execute()
-        )
-        res_reg, res_att = await asyncio.gather(res_reg_task, res_att_task)
-        total_registered = res_reg.count or 0
-        # Distinct users who attended at least one event
-        total_attended = len({r["user_qr_code"] for r in (res_att.data or [])})
-    except Exception:
-        total_registered = 0
-        total_attended = 0
+    if "data" in _stat_cache:
+        return _stat_cache["data"]
 
-    return total_registered, total_attended
+    try:
+        reg_task = get_registered_participant_count()
+        att_task = get_attended_count()
+        total_registered, total_attended = await asyncio.gather(reg_task, att_task)
+    except Exception:
+        return _stat_cache.get("data", (0, 0))
+
+    result = (total_registered, total_attended)
+    _stat_cache["data"] = result
+    return result
+
+
+def invalidate_stat_cache() -> None:
+    _stat_cache.clear()
 
 
 async def get_all_participants():
-    """
-    Full attendance report: all participants with aggregate registration/attendance counts.
-    """
     try:
-        users_res, reg_res = await asyncio.gather(
-            supabase_admin.table("users")
-            .select("qr_code_data, name, email, role")
-            .eq("role", "participant")
-            .order("name")
-            .execute(),
-            supabase_admin.table("registrations")
-            .select("user_qr_code, attended_at")
-            .execute(),
-        )
-        users = users_res.data or []
-        registrations = reg_res.data or []
+        users_task = get_all_participants_repo()
+        reg_task = get_all_registrations(select="user_qr_code, attended_at")
+        users, registrations = await asyncio.gather(users_task, reg_task)
     except Exception:
         return []
 
@@ -68,41 +67,20 @@ async def get_all_participants():
 
 
 async def get_participants_for_event(event_id: str):
-    """
-    Per-event attendance report: all registrations for a specific event
-    merged with user details.
-    Returns (participants_list, event_dict).
-    """
     try:
-        event_res, reg_res = await asyncio.gather(
-            supabase_admin.table("events")
-            .select("id, title")
-            .eq("id", event_id)
-            .single()
-            .execute(),
-            supabase_admin.table("registrations")
-            .select("user_qr_code, registered_at, attended_at")
-            .eq("event_id", event_id)
-            .order("registered_at")
-            .execute(),
-        )
+        event_task = get_event_by_id(event_id, select="id, title")
+        reg_task = get_registrations_for_event(event_id)
+        event, registrations = await asyncio.gather(event_task, reg_task)
     except Exception:
         return [], None
 
-    event = event_res.data
-    registrations = reg_res.data or []
     if not registrations:
         return [], event
 
     user_qr_codes = [r["user_qr_code"] for r in registrations]
     try:
-        users_res = await (
-            supabase_admin.table("users")
-            .select("qr_code_data, name, email, role, participant_type, student_id, university, organization, job_role")
-            .in_("qr_code_data", user_qr_codes)
-            .execute()
-        )
-        users_by_qr = {u["qr_code_data"]: u for u in (users_res.data or [])}
+        users_res = await get_users_by_qr_codes(user_qr_codes, select="qr_code_data, name, email, role, participant_type, student_id, university, organization, job_role")
+        users_by_qr = {u["qr_code_data"]: u for u in users_res}
     except Exception:
         users_by_qr = {}
 
@@ -114,34 +92,34 @@ async def get_participants_for_event(event_id: str):
     return participants, event
 
 
-async def get_all_users():
-    try:
-        res = await (
-            supabase_admin.table("users")
-            .select(
-                "github_id, name, email, avatar_url, role, created_at, "
-                "participant_type, student_id, university, study_year, "
-                "organization, job_role"
-            )
-            .order("role")
-            .order("created_at", desc=True)
-            .execute()
-        )
-        users_list = res.data or []
-    except Exception:
-        users_list = []
+async def get_paginated_users(page: int = 1, limit: int = 15, search: str = "") -> dict:
+    cache_key = (page, limit, search.lower().strip())
 
-    return users_list
+    if cache_key in _paginated_users_cache:
+        return _paginated_users_cache[cache_key]
+
+    offset = (page - 1) * limit
+    users, total = await get_paginated_users_repo(offset, limit, search)
+
+    result = {
+        "users": users,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": -(-total // limit) if total > 0 else 1
+    }
+
+    _paginated_users_cache[cache_key] = result
+    return result
+
+
+def invalidate_users_cache() -> None:
+    _paginated_users_cache.clear()
 
 
 async def change_user_role(github_id: str, role: str = "admin"):
     try:
-        await (
-            supabase_admin.table("users")
-            .update({"role": role})
-            .eq("github_id", github_id)
-            .execute()
-        )
+        await update_user_by_github_id(github_id, {"role": role})
         return None, True
     except Exception as e:
         return e, False
@@ -149,32 +127,13 @@ async def change_user_role(github_id: str, role: str = "admin"):
 
 async def delete_user_from_db(github_id: str):
     try:
-        # Fetch the user's QR code ID so we can clean up registrations first
-        user_res = await (
-            supabase_admin.table("users")
-            .select("qr_code_data")
-            .eq("github_id", github_id)
-            .single()
-            .execute()
-        )
-        qr_code_data = user_res.data.get("qr_code_data") if user_res.data else None
+        user = await get_user_by_github_id(github_id)
+        qr_code_data = user.get("qr_code_data") if user else None
 
-        # Delete registrations first to avoid FK constraint violation
         if qr_code_data:
-            await (
-                supabase_admin.table("registrations")
-                .delete()
-                .eq("user_qr_code", qr_code_data)
-                .execute()
-            )
+            await delete_registrations_for_user(qr_code_data)
 
-        # Now delete the user
-        await (
-            supabase_admin.table("users")
-            .delete()
-            .eq("github_id", github_id)
-            .execute()
-        )
+        await delete_user_by_github_id(github_id)
         return None, True
     except Exception as e:
         return str(e), False

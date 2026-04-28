@@ -1,3 +1,4 @@
+import asyncio
 import io
 from datetime import datetime
 
@@ -6,11 +7,18 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import FormData
 
-from routes.auth import get_current_user
-from services.admin import fetch_user_stat, generate_pdf, get_all_users, get_all_participants, \
-    get_participants_for_event, change_user_role, delete_user_from_db
-
-from services.event import get_all_events, add_event, toggle_event_status, delete_event_data, update_event_data
+from api.v1.auth import get_current_user
+from services.admin import (
+    fetch_user_stat, generate_pdf, get_paginated_users, get_all_participants,
+    get_participants_for_event, change_user_role, delete_user_from_db,
+    invalidate_users_cache, invalidate_stat_cache
+)
+from services.event import get_active_event
+from services.event import (
+    get_all_events, add_event, toggle_event_status,
+    delete_event_data, update_event_data
+)
+from services.registration import invalidate_active_events_cache
 
 router: APIRouter = APIRouter(
     prefix="/admin",
@@ -26,9 +34,10 @@ async def admin_dashboard(
         user=Depends(get_current_user)
 ):
     """Admin dashboard — shows event stats."""
-    from services.event import get_active_event
-    total_registered, total_attended = await fetch_user_stat()
-    active_event = await get_active_event()
+    (total_registered, total_attended), active_event = await asyncio.gather(
+        fetch_user_stat(),
+        get_active_event()
+    )
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -88,18 +97,31 @@ async def export_attendance_event(event_id: str, user=Depends(get_current_user))
 @router.get("/users", response_class=HTMLResponse)
 async def admin_users(
         request: Request,
+        page: int = 1,
+        limit: int = 15,
+        search: str = "",
         user=Depends(get_current_user)
 ):
-    """Admin page — lists all registered users with their roles."""
+    """Admin page — lists registered users with server-side pagination."""
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    users_list = await get_all_users()
+    page = max(1, page)
+    result = await get_paginated_users(page=page, limit=limit, search=search)
+
+    total_pages = result["pages"]
+    if page > total_pages and total_pages > 0:
+        return RedirectResponse(url=f"/admin/users?page={total_pages}&search={search}", status_code=302)
 
     return templates.TemplateResponse("admin_users.html", {
         "request": request,
         "user": user,
-        "users_list": users_list,
+        "users_list": result["users"],
+        "page": result["page"],
+        "limit": limit,
+        "search": search,
+        "total_count": result["total"],
+        "total_pages": result["pages"],
     })
 
 
@@ -115,6 +137,8 @@ async def promote_user(
     err, status = await change_user_role(github_id, "admin")
     if not status:
         raise HTTPException(status_code=500, detail=f"Failed to promote user: {str(err)}")
+    invalidate_users_cache()
+    invalidate_stat_cache()
     return RedirectResponse(url="/admin/users?success=promoted", status_code=303)
 
 
@@ -130,6 +154,8 @@ async def demote_user(
     err, status = await change_user_role(github_id, "participant")
     if not status:
         raise HTTPException(status_code=500, detail=f"Failed to demote user: {str(err)}")
+    invalidate_users_cache()
+    invalidate_stat_cache()
     return RedirectResponse(url="/admin/users?success=demoted", status_code=303)
 
 
@@ -145,6 +171,8 @@ async def delete_user(
     err, status = await delete_user_from_db(github_id)
     if not status:
         raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(err)}")
+    invalidate_users_cache()
+    invalidate_stat_cache()
     return RedirectResponse(url="/admin/users?success=deleted", status_code=303)
 
 
@@ -180,6 +208,7 @@ async def create_event(
     err, status, code = await add_event(form)
     if not status:
         raise HTTPException(status_code=code, detail=err)
+    invalidate_active_events_cache()
     return RedirectResponse(url="/admin/events?success=created", status_code=303)
 
 
@@ -198,6 +227,7 @@ async def edit_event(
     err, status, code = await update_event_data(form, event_id)
     if not status:
         raise HTTPException(status_code=code, detail=err)
+    invalidate_active_events_cache()
     return RedirectResponse(url="/admin/events?success=updated", status_code=303)
 
 
@@ -213,6 +243,7 @@ async def toggle_event(
     status, is_success = await toggle_event_status(event_id)
     if not is_success:
         raise HTTPException(status_code=500, detail=f"Failed to toggle event: {str(status)}")
+    invalidate_active_events_cache()
     return RedirectResponse(url=f"/admin/events?success={status}", status_code=303)
 
 
@@ -228,4 +259,5 @@ async def delete_event(
     err, is_success = await delete_event_data(event_id)
     if not is_success:
         raise HTTPException(status_code=500, detail=f"Failed to delete event: {str(err)}")
+    invalidate_active_events_cache()
     return RedirectResponse(url="/admin/events?success=event_deleted", status_code=303)

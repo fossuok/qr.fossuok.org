@@ -6,57 +6,38 @@ import uuid
 from datetime import datetime, timezone
 
 import qrcode
+from cachetools import TTLCache
 from fastapi import HTTPException
 
-from config.supabase import supabase_admin
+from repository.event_repo import get_all_active_events as get_active_events_repo, get_event_by_id
+from repository.registration_repo import (
+    get_user_registrations as get_user_registrations_repo,
+    create_registration, get_registration_by_id, update_registration
+)
+from repository.user_repo import get_user_by_qr_code, update_user_by_qr_code
+
+_active_events_cache = TTLCache(maxsize=1, ttl=120)  # 2 minutes
+
+
+def invalidate_active_events_cache() -> None:
+    _active_events_cache.clear()
 
 
 async def get_user_registrations(user_qr_code: str) -> list[dict]:
-    """Fetch all registrations for a user, merged with event details."""
+    return await get_user_registrations_repo(user_qr_code)
+
+
+async def get_all_active_events() -> list[dict]:
+    if "data" in _active_events_cache:
+        return _active_events_cache["data"]
+
     try:
-        reg_res = await (
-            supabase_admin.table("registrations")
-            .select("id, event_id, registered_at, attended_at")
-            .eq("user_qr_code", user_qr_code)
-            .order("registered_at")
-            .execute()
-        )
-        registrations = reg_res.data or []
-        if not registrations:
-            return []
-
-        event_ids = list({r["event_id"] for r in registrations})
-        events_res = await (
-            supabase_admin.table("events")
-            .select("id, title, description, location, start_time, end_time, is_active")
-            .in_("id", event_ids)
-            .execute()
-        )
-        events_by_id = {str(e["id"]): e for e in (events_res.data or [])}
-
-        return [{**reg, "event": events_by_id.get(str(reg["event_id"]), {})} for reg in registrations]
+        result = await get_active_events_repo()
     except Exception:
-        return []
+        return _active_events_cache.get("data", [])
 
-
-async def get_available_events_for_user(user_qr_code: str) -> list[dict]:
-    """Returns active events the user is NOT already registered for."""
-    try:
-        events_res, reg_res = await asyncio.gather(
-            supabase_admin.table("events")
-            .select("id, title, description, location, start_time, end_time")
-            .eq("is_active", True)
-            .execute(),
-            supabase_admin.table("registrations")
-            .select("event_id")
-            .eq("user_qr_code", user_qr_code)
-            .execute(),
-        )
-        active_events = events_res.data or []
-        registered_ids = {r["event_id"] for r in (reg_res.data or [])}
-        return [e for e in active_events if str(e["id"]) not in registered_ids]
-    except Exception:
-        return []
+    _active_events_cache["data"] = result
+    return result
 
 
 async def register_for_event(
@@ -65,35 +46,23 @@ async def register_for_event(
         user_name: str,
         user_email: str,
 ) -> dict:
-    """
-    Creates a registration row and generates a unique QR for this event.
-    Returns dict with registration id and qr_data_url.
-    """
     reg_id = str(uuid.uuid4())
 
     try:
-        res = await (
-            supabase_admin.table("registrations")
-            .insert({"id": reg_id, "user_qr_code": user_qr_code, "event_id": event_id})
-            .execute()
-        )
-        registration = res.data[0]
+        registration = await create_registration({
+            "id": reg_id, 
+            "user_qr_code": user_qr_code, 
+            "event_id": event_id
+        })
     except Exception as e:
         msg = str(e).lower()
         if "duplicate" in msg or "unique" in msg or "23505" in msg:
             raise HTTPException(status_code=409, detail="Already registered for this event.")
         raise HTTPException(status_code=400, detail=f"Registration failed: {str(e)}")
 
-    # Get event title for QR payload
     try:
-        event_res = await (
-            supabase_admin.table("events")
-            .select("title")
-            .eq("id", event_id)
-            .single()
-            .execute()
-        )
-        event_title = event_res.data.get("title", "FOSSUoK Event") if event_res.data else "FOSSUoK Event"
+        event = await get_event_by_id(event_id, select="title")
+        event_title = event.get("title", "FOSSUoK Event") if event else "FOSSUoK Event"
     except Exception:
         event_title = "FOSSUoK Event"
 
@@ -107,38 +76,17 @@ async def register_for_event(
 
 
 async def get_registration_qr_payload(registration_id: str, user_qr_code: str) -> str | None:
-    """Rebuilds the QR payload for a registration (for download/display)."""
     try:
-        reg_res = await (
-            supabase_admin.table("registrations")
-            .select("id, user_qr_code, event_id")
-            .eq("id", registration_id)
-            .eq("user_qr_code", user_qr_code)  # ownership check
-            .single()
-            .execute()
-        )
-        if not reg_res.data:
+        reg = await get_registration_by_id(registration_id, select="id, user_qr_code, event_id", user_qr_code=user_qr_code)
+        if not reg:
             return None
-        reg = reg_res.data
 
-        event_res = await (
-            supabase_admin.table("events")
-            .select("title")
-            .eq("id", reg["event_id"])
-            .single()
-            .execute()
-        )
-        event_title = event_res.data.get("title", "FOSSUoK Event") if event_res.data else "FOSSUoK Event"
+        event_task = get_event_by_id(reg["event_id"], select="title")
+        user_task = get_user_by_qr_code(user_qr_code, select="name")
+        event, user = await asyncio.gather(event_task, user_task)
 
-        # Need username too
-        user_res = await (
-            supabase_admin.table("users")
-            .select("name")
-            .eq("qr_code_data", user_qr_code)
-            .single()
-            .execute()
-        )
-        user_name = user_res.data.get("name", "") if user_res.data else ""
+        event_title = event.get("title", "FOSSUoK Event") if event else "FOSSUoK Event"
+        user_name = user.get("name", "") if user else ""
 
         return json.dumps(
             {"rid": reg["id"], "uid": reg["user_qr_code"], "eid": reg["event_id"],
@@ -150,48 +98,25 @@ async def get_registration_qr_payload(registration_id: str, user_qr_code: str) -
 
 
 async def verify_registration(qr_raw: str) -> dict:
-    """
-    Verifies a scanned QR. Handles:
-      - New format: {"rid": ..., "uid": ..., "eid": ...}
-      - Legacy format: {"id": ..., "name": ..., "email": ..., "event": ...}
-    """
     try:
         data = json.loads(qr_raw)
     except (json.JSONDecodeError, TypeError):
         data = {"id": qr_raw}
 
-    # New format
     if "rid" in data:
         reg_id = data["rid"]
         try:
-            reg_res = await (
-                supabase_admin.table("registrations")
-                .select("id, user_qr_code, event_id, attended_at")
-                .eq("id", reg_id)
-                .single()
-                .execute()
-            )
+            reg = await get_registration_by_id(reg_id, select="id, user_qr_code, event_id, attended_at")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-        if not reg_res.data:
+        if not reg:
             raise HTTPException(status_code=404, detail="Registration not found.")
 
-        reg = reg_res.data
-
-        # Fetch user + event in parallel
-        user_res, event_res = await asyncio.gather(
-            supabase_admin.table("users")
-            .select("name, email, avatar_url")
-            .eq("qr_code_data", reg["user_qr_code"])
-            .single()
-            .execute(),
-            supabase_admin.table("events")
-            .select("id, title")
-            .eq("id", reg["event_id"])
-            .single()
-            .execute(),
-        )
+        user_task = get_user_by_qr_code(reg["user_qr_code"], select="name, email, avatar_url")
+        event_task = get_event_by_id(reg["event_id"], select="id, title")
+        
+        user_dict, event_dict = await asyncio.gather(user_task, event_task)
 
         already_marked = bool(reg.get("attended_at"))
         attended_at = reg.get("attended_at")
@@ -201,19 +126,14 @@ async def verify_registration(qr_raw: str) -> dict:
 
             async def _mark():
                 try:
-                    await (
-                        supabase_admin.table("registrations")
-                        .update({"attended_at": attended_at})
-                        .eq("id", reg_id)
-                        .execute()
-                    )
+                    await update_registration(reg_id, {"attended_at": attended_at})
                 except Exception:
                     pass
 
             asyncio.create_task(_mark())
 
-        u = user_res.data or {}
-        e = event_res.data or {}
+        u = user_dict or {}
+        e = event_dict or {}
 
         return {
             "valid": True,
@@ -232,20 +152,13 @@ async def verify_registration(qr_raw: str) -> dict:
     # Legacy format
     search_id = data.get("id", qr_raw)
     try:
-        res = await (
-            supabase_admin.table("users")
-            .select("qr_code_data, name, email, attended_at")
-            .eq("qr_code_data", search_id)
-            .limit(1)
-            .execute()
-        )
+        user = await get_user_by_qr_code(search_id, select="qr_code_data, name, email, attended_at")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    if not res.data:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    user = res.data[0]
     already_marked = bool(user.get("attended_at"))
     attended_at = user.get("attended_at")
 
@@ -254,12 +167,7 @@ async def verify_registration(qr_raw: str) -> dict:
 
         async def _mark_legacy():
             try:
-                await (
-                    supabase_admin.table("users")
-                    .update({"attended_at": attended_at})
-                    .eq("qr_code_data", search_id)
-                    .execute()
-                )
+                await update_user_by_qr_code(search_id, {"attended_at": attended_at})
             except Exception:
                 pass
 
@@ -280,7 +188,6 @@ async def verify_registration(qr_raw: str) -> dict:
 
 
 def _generate_qr_data_url(text: str) -> str:
-    """CPU-bound — call via asyncio.to_thread."""
     buf = io.BytesIO()
     qrcode.make(text).save(buf, format="PNG")
     buf.seek(0)

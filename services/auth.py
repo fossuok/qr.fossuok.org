@@ -8,7 +8,7 @@ from fastapi import BackgroundTasks
 from itsdangerous import URLSafeTimedSerializer
 
 from config.supabase import supabase
-from schemas import SessionUser
+from schema import SessionUser
 from .user import auto_register_user
 from .mail import send_qr_email
 
