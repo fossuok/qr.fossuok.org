@@ -1465,7 +1465,7 @@ footer {
 .btn-register:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 .btn-qr {
-    display: inline-flex; align-items: center; gap: .35rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
     background: #f3f4f6; color: #374151; border: 1.5px solid #e5e7eb;
     border-radius: 10px; padding: .45rem 1rem;
     font-size: .82rem; font-weight: 600; text-decoration: none;
@@ -1781,3 +1781,25 @@ footer {
     .category-label .cat-icon { font-size: 1.3rem; }
 }
 
+/* WhatsApp Join Button */
+.btn-whatsapp {
+    background-color: #25D366;
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    padding: 0.6rem 1rem;
+    transition: background-color 0.2s, transform 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-whatsapp:hover {
+    background-color: #20b858;
+    color: white;
+    transform: translateY(-1px);
+}

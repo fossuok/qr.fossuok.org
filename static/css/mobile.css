@@ -1,0 +1,345 @@
+/* ==========================================================================
+   Complete Profile & User Events (Mobile Responsive CSS)
+   ========================================================================== */
+
+/* --- Complete Profile --- */
+.cp-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+    min-height: calc(100vh - 150px);
+    background-color: #f8f9fa;
+}
+
+.cp-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    max-width: 600px;
+    width: 100%;
+}
+
+.cp-header-icon {
+    font-size: 3rem;
+    color: #4b2e83;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.cp-title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.cp-subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.category-card {
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+}
+
+.category-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.category-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem 0.5rem;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    transition: all 0.2s ease-in-out;
+}
+
+.category-card input[type="radio"]:checked + .category-label {
+    border-color: #4b2e83;
+    background-color: #f4f0ff;
+    color: #4b2e83;
+}
+
+.cat-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.cat-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.cp-divider {
+    border-top: 1px solid #e9ecef;
+    margin: 1.5rem 0;
+}
+
+.field-panel {
+    display: none;
+    animation: fadeIn 0.3s;
+}
+
+.field-panel.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.field-group {
+    margin-bottom: 1.25rem;
+}
+
+.cp-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+    display: block;
+}
+
+.cp-input, .cp-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.15s ease-in-out;
+    /* Minimum touch target size for mobile */
+    min-height: 48px;
+}
+
+.cp-input:focus, .cp-select:focus {
+    border-color: #4b2e83;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(75, 46, 131, 0.25);
+}
+
+.hint-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.4rem;
+}
+
+.cp-submit {
+    width: 100%;
+    padding: 0.85rem;
+    background-color: #4b2e83;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 1.5rem;
+    min-height: 52px; /* Touch target */
+}
+
+.cp-submit:disabled {
+    background-color: #a593c2;
+    cursor: not-allowed;
+}
+
+.cp-submit:not(:disabled):hover {
+    background-color: #3b2266;
+}
+
+.cp-placeholder {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 1.5rem 0;
+}
+
+/* Mobile Adjustments for Profile */
+@media (max-width: 768px) {
+    .category-grid {
+        grid-template-columns: 1fr;
+    }
+    .cp-card {
+        padding: 1.5rem 1rem;
+    }
+    .category-label {
+        flex-direction: row;
+        justify-content: center;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    .cat-icon {
+        margin-bottom: 0;
+    }
+}
+
+
+/* --- User Events --- */
+.ue-header {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+}
+
+.ue-header h2 {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: #333;
+}
+
+.ue-header p {
+    color: #666;
+    margin-bottom: 0;
+}
+
+.section-label {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #495057;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+.ec {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #e9ecef;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ec.available {
+    border-top: 4px solid #0d6efd;
+}
+
+.ec-badge {
+    display: inline-block;
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ec-badge.open {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+}
+
+.ec-badge.registered {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.ec-badge.attended {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.ec-title {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #212529;
+    margin-bottom: 0.5rem;
+}
+
+.ec-meta {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.btn-register, .btn-qr, .btn-whatsapp {
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: center;
+    min-height: 44px; /* Touch target */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-register {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.btn-register:hover { background-color: #0b5ed7; }
+.btn-register:disabled { background-color: #8bb9fe; cursor: not-allowed; }
+
+.btn-qr {
+    background-color: #4b2e83;
+    color: white;
+}
+.btn-qr:hover { background-color: #3b2266; color: white; }
+
+.btn-whatsapp {
+    background-color: #25D366;
+    color: white;
+}
+.btn-whatsapp:hover { background-color: #128C7E; color: white; }
+
+.empty-card {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+    color: #6c757d;
+}
+
+.empty-card i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #adb5bd;
+}
+
+/* Mobile Adjustments for User Events */
+@media (max-width: 576px) {
+    .ec {
+        padding: 1.25rem;
+    }
+    .d-flex.gap-2 {
+        flex-direction: column;
+    }
+    .btn-register, .btn-qr, .btn-whatsapp {
+        width: 100%;
+        min-height: 48px;
+    }
+}
