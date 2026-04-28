@@ -2,7 +2,7 @@
 
 A robust event management and registration system that uses QR codes for attendance verification. Built with performance, scalability, and developer experience in mind.
 
-## 🚀 Features
+## Features
 
 - **Multi-Event Management**: Create and manage multiple events simultaneously. Admins can toggle event visibility and registration status.
 - **Dynamic Profile Completion**: New users are guided through a profile completion flow to collect essential affiliation details (Student ID, University, Organization, etc.).
@@ -15,7 +15,7 @@ A robust event management and registration system that uses QR codes for attenda
 - **Modern Architecture**: Clean separation of concerns using Repository and Service patterns.
 - **Performance Optimized**: Async Supabase integration with persistent connection pooling and request-level performance logging.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12+)
 - **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
@@ -24,12 +24,12 @@ A robust event management and registration system that uses QR codes for attenda
 - **Package Manager**: [uv](https://docs.astral.sh/uv/)
 - **Styling**: Consolidated external CSS with mobile-first responsiveness.
 
-## 📋 Requirements
+## Requirements
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) package manager
 
-## ⚙️ Setup
+## Setup
 
 ### Application
 
@@ -67,7 +67,7 @@ A robust event management and registration system that uses QR codes for attenda
 3. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (or your production URL).
 4. Copy the **Client ID** and **Client Secret** to your `.env` file.
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 ├── api/             # HTTP route handlers (v1)
@@ -86,7 +86,7 @@ A robust event management and registration system that uses QR codes for attenda
 └── vercel.json      # Vercel deployment configuration
 ```
 
-## 🔗 Endpoints
+## Endpoints
 
 ### Template Endpoints (Web Pages)
 
@@ -109,7 +109,7 @@ A robust event management and registration system that uses QR codes for attenda
 | GET | `/user/registrations/{id}/qr` | Download high-quality QR PNG for a specific registration |
 | POST | `/api/verify` | JSON API for QR scanning (used by verification page) |
 
-## 🔄 Workflow
+## Workflow
 
 ### 1. Participant Experience
 - **Login**: Users authenticate via GitHub.
@@ -122,7 +122,7 @@ A robust event management and registration system that uses QR codes for attenda
 - **Event Lifecycle**: Admins create events and toggle them as "Active". Activating one event automatically deactivates others if configured (standard flow).
 - **Attendance**: Admins use the `/admin/verify` page (mobile-friendly) to scan participant QR codes.
 
-## 🚀 Deployment (Vercel)
+## Deployment (Vercel)
 
 1. Connect your GitHub repository to [Vercel](https://vercel.com).
 2. Use the **Python** runtime preset.
