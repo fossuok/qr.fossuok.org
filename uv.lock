@@ -415,6 +415,7 @@ name = "fossuok-qr"
 version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "cachetools" },
     { name = "fastapi", extra = ["standard"] },
     { name = "fpdf2" },
     { name = "httpx" },
@@ -429,6 +430,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cachetools", specifier = ">=6.2.6" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.131.0" },
     { name = "fpdf2", specifier = ">=2.8.6" },
     { name = "httpx", specifier = ">=0.28.1" },
