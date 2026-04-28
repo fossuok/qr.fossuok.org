@@ -18,7 +18,7 @@
             </div>
             <div class="d-flex align-items-center gap-3">
                 <span class="user-count-badge">
-                    <i class="bi bi-people-fill me-1"></i>{{ users_list | length }} users
+                    <i class="bi bi-people-fill me-1"></i>{{ total_count }} users
                 </span>
             </div>
         </div>
@@ -26,10 +26,10 @@
 
     <!-- Search -->
     <div class="col-12">
-        <div class="search-wrap">
+        <form action="/admin/users" method="get" class="search-wrap">
             <i class="bi bi-search"></i>
-            <input type="text" id="userSearch" class="search-box" placeholder="Search by name or email…">
-        </div>
+            <input type="text" name="search" id="userSearch" class="search-box" placeholder="Search by name or email…" value="{{ search }}">
+        </form>
     </div>
 
     <!-- Users Table -->
@@ -113,6 +113,45 @@
                 </tbody>
             </table>
             </div>
+            
+            <!-- Pagination Controls -->
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                <span class="text-muted small">
+                    Showing {{ (page - 1) * limit + 1 if total_count > 0 else 0 }} to {{ ((page - 1) * limit + users_list|length) if total_count > 0 else 0 }} of {{ total_count }} entries
+                </span>
+                <div class="d-flex gap-1">
+                    {% if page <= 1 %}
+                    <span class="btn btn-sm btn-outline-secondary disabled">
+                        <i class="bi bi-chevron-left"></i>
+                    </span>
+                    {% else %}
+                    <a href="?page={{ page - 1 }}&search={{ search }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                    {% endif %}
+                    
+                    {% set start_page = [1, page - 2] | max %}
+                    {% set end_page = [total_pages, start_page + 4] | min %}
+                    {% if end_page - start_page < 4 %}
+                        {% set start_page = [1, end_page - 4] | max %}
+                    {% endif %}
+                    
+                    {% for p in range(start_page, end_page + 1) %}
+                        <a href="?page={{ p }}&search={{ search }}" class="btn btn-sm {{ 'btn-primary' if p == page else 'btn-outline-secondary' }}">{{ p }}</a>
+                    {% endfor %}
+                    
+                    {% if page >= total_pages or total_pages == 0 %}
+                    <span class="btn btn-sm btn-outline-secondary disabled">
+                        <i class="bi bi-chevron-right"></i>
+                    </span>
+                    {% else %}
+                    <a href="?page={{ page + 1 }}&search={{ search }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
         </div>
         {% else %}
         <div class="card">

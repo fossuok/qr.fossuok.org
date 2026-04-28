@@ -1,13 +1,4 @@
 (function () {
-    /* ── Search ── */
-    document.getElementById('userSearch').addEventListener('input', function () {
-        const q = this.value.toLowerCase();
-        document.querySelectorAll('.user-row').forEach(function (row) {
-            const name = row.querySelector('.user-name')?.textContent.toLowerCase() || '';
-            const email = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
-            row.style.display = (name.includes(q) || email.includes(q)) ? '' : 'none';
-        });
-    });
 
     /* ── Confirm + Submit via SweetAlert2 ── */
     function handleAction(btn) {

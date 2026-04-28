@@ -1,4 +1,53 @@
 (function () {
+    /* ── Pagination ── */
+    const rowsPerPage = 6;
+    let currentPage = 1;
+    // Note: since events use a grid layout with col-12 col-md-6 wrappers,
+    // we should paginate the immediate parent of `.event-card`
+    const allEventCards = Array.from(document.querySelectorAll('.event-card')).map(card => card.parentElement);
+    let filteredEvents = [...allEventCards];
+
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredEvents.length / rowsPerPage);
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+
+        allEventCards.forEach(r => r.style.display = 'none');
+        filteredEvents.slice(start, end).forEach(r => r.style.display = '');
+
+        const info = document.getElementById('paginationInfo');
+        if (info) {
+            info.textContent = filteredEvents.length === 0 
+                ? 'Showing 0 to 0 of 0 events'
+                : `Showing ${start + 1} to ${Math.min(end, filteredEvents.length)} of ${filteredEvents.length} events`;
+        }
+
+        const controls = document.getElementById('paginationControls');
+        if (controls) {
+            let html = '';
+            html += `<button class="btn btn-sm btn-outline-secondary" ${currentPage === 1 ? 'disabled' : ''} onclick="window.goToEventPage(${currentPage - 1})"><i class="bi bi-chevron-left"></i></button>`;
+            
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-secondary'}" onclick="window.goToEventPage(${i})">${i}</button>`;
+            }
+            
+            html += `<button class="btn btn-sm btn-outline-secondary" ${currentPage >= totalPages || totalPages === 0 ? 'disabled' : ''} onclick="window.goToEventPage(${currentPage + 1})"><i class="bi bi-chevron-right"></i></button>`;
+            controls.innerHTML = html;
+        }
+    }
+
+    window.goToEventPage = function(page) {
+        currentPage = page;
+        renderPagination();
+    };
+
+    // Initialize pagination
+    renderPagination();
+
     /* ── Form HTML builder ── */
     function buildFormHtml(vals) {
         vals = vals || {};
@@ -29,6 +78,10 @@
                 '<div class="ef-label"><i class="bi bi-image"></i> Cover Image URL</div>' +
                 '<input id="swalImage" class="ef-input" placeholder="https://..." value="' + (vals.image_url || '').replace(/"/g, '&quot;') + '">' +
             '</div>' +
+            '<div class="ef-group">' +
+                '<div class="ef-label"><i class="bi bi-whatsapp"></i> WhatsApp Group Link</div>' +
+                '<input id="swalWhatsapp" class="ef-input" placeholder="https://chat.whatsapp.com/..." value="' + (vals.whatsapp_link || '').replace(/"/g, '&quot;') + '">' +
+            '</div>' +
             '<div class="ef-divider"></div>' +
             '<label class="ef-toggle">' +
                 '<input id="swalActive" type="checkbox"' + (vals.is_active ? ' checked' : '') + '>' +
@@ -50,6 +103,7 @@
             start_time: document.getElementById('swalStart').value,
             end_time: document.getElementById('swalEnd').value,
             image_url: document.getElementById('swalImage').value.trim(),
+            whatsapp_link: document.getElementById('swalWhatsapp').value.trim(),
             is_active: document.getElementById('swalActive').checked
         };
     }
@@ -76,6 +130,7 @@
                 document.getElementById('formStartTime').value = d.start_time;
                 document.getElementById('formEndTime').value = d.end_time;
                 document.getElementById('formImageUrl').value = d.image_url;
+                document.getElementById('formWhatsappLink').value = d.whatsapp_link;
                 document.getElementById('formIsActive').value = d.is_active ? 'on' : '';
                 document.getElementById('createEventForm').submit();
             }
@@ -93,6 +148,7 @@
                 start_time: btn.dataset.eventStart,
                 end_time: btn.dataset.eventEnd,
                 image_url: btn.dataset.eventImage,
+                whatsapp_link: btn.dataset.eventWhatsapp,
                 is_active: btn.dataset.eventActive === 'true'
             };
 
@@ -118,6 +174,7 @@
                     document.getElementById('editStartTime').value = d.start_time;
                     document.getElementById('editEndTime').value = d.end_time;
                     document.getElementById('editImageUrl').value = d.image_url;
+                    document.getElementById('editWhatsappLink').value = d.whatsapp_link;
                     document.getElementById('editIsActive').value = d.is_active ? 'on' : '';
                     form.submit();
                 }
