@@ -1,150 +1,134 @@
 # QR-Based Event Registration
 
-This is a sample event registration system that uses QR codes to verify attendance.
+A robust event management and registration system that uses QR codes for attendance verification. Built with performance, scalability, and developer experience in mind.
 
-## Tech Stack
+## 🚀 Features
 
-- **FastAPI** - backend API and HTML page serving
-- **Supabase Postgres**
-- **Jinja2** - HTML templates
-- **Bootstrap 5** - UI framework
-- **Custom CSS** - consolidated external stylesheet (`static/css/styles.css`), mobile-first responsive
+- **Multi-Event Management**: Create and manage multiple events simultaneously. Admins can toggle event visibility and registration status.
+- **Dynamic Profile Completion**: New users are guided through a profile completion flow to collect essential affiliation details (Student ID, University, Organization, etc.).
+- **Per-Event Registration**: Users can browse active events and register for them individually.
+- **Unique QR Generation**: Secure, per-registration QR codes are generated and emailed to participants.
+- **WhatsApp Integration**: Admins can attach WhatsApp group links to events, allowing participants to join communities instantly after registration.
+- **Admin Dashboard**: Real-time attendance stats, user management, and event controls.
+- **Server-Side Pagination & Search**: Efficiently manage thousands of users with backend-driven pagination and search filters.
+- **PDF Attendance Reports**: Export professional attendance reports as PDFs (available globally or per-event).
+- **Modern Architecture**: Clean separation of concerns using Repository and Service patterns.
+- **Performance Optimized**: Async Supabase integration with persistent connection pooling and request-level performance logging.
 
-## Requirements
+## 🛠️ Tech Stack
+
+- **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12+)
+- **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **Templating**: [Jinja2](https://palletsprojects.com/p/jinja/)
+- **UI Framework**: [Bootstrap 5](https://getbootstrap.com/)
+- **Package Manager**: [uv](https://docs.astral.sh/uv/)
+- **Styling**: Consolidated external CSS with mobile-first responsiveness.
+
+## 📋 Requirements
 
 - Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
+- [uv](https://docs.astral.sh/uv/) package manager
 
-## Setup
+## ⚙️ Setup
+
 ### Application
 
-1. Clone the repo
-    ```bash
-    git clone https://github.com/fossuok/qr.fossuok.org
-    cd qr.fossuok.org
-    ```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/fossuok/qr.fossuok.org
+   cd qr.fossuok.org
+   ```
 
-2. Install dependencies
-    ```bash
-    uv sync
-    ```
+2. **Install dependencies**
+   ```bash
+   uv sync
+   ```
 
-3. Copy `.env.example` to `.env` and fill in values
-    ```bash
-    # Linux/macOS
-    cp .env.example .env
+3. **Configure Environment Variables**
+   Copy `.env.example` to `.env` and fill in your Supabase and GitHub OAuth credentials.
+   ```bash
+   # Windows
+   copy .env.example .env
 
-    # Windows
-    copy .env.example .env
-    ```
+   # Linux/macOS
+   cp .env.example .env
+   ```
 
-4. Run the application
-    ```bash
-    python main.py
-    ```
+4. **Run the development server**
+   ```bash
+   python main.py
+   ```
    The app will be available at `http://localhost:8000`
 
-### Live Preview (For testing purposes only)
+### GitHub OAuth Setup
 
-- [Live Preview](https://qr.fossuok.org)
+1. Create a "New OAuth App" in [GitHub Developer Settings](https://github.com/settings/developers).
+2. Set **Homepage URL** to `http://localhost:8000`.
+3. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (or your production URL).
+4. Copy the **Client ID** and **Client Secret** to your `.env` file.
 
-### GitHub (For Login)
+## 📂 Project Structure
 
-1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Click on "New OAuth App
-3. Fill in the following details:
-    - Application name: `QR Event Registration`
-    - Homepage URL: `http://localhost:8000`
-    - Authorization callback URL:
-4. Click on "Register application"
-5. Copy the "Client ID" and "Client Secret"
+```text
+├── api/             # HTTP route handlers (v1)
+│   ├── admin.py     # Admin-only dashboard and management routes
+│   ├── auth.py      # GitHub OAuth and session management
+│   ├── users.py     # Participant-facing pages and registration
+│   └── api.py       # JSON API endpoints (e.g., QR verification)
+├── config/          # Supabase client setup (sync & async)
+├── middleware/      # Custom middleware (Performance logging)
+├── repository/      # Database abstraction layer (CRUD logic)
+├── schema/          # Pydantic models (Requests, Responses, Entities)
+├── services/        # Business logic (QR, PDF, Mail, Registration)
+├── static/          # Static assets (CSS, JS, Icons)
+├── templates/       # Jinja2 HTML templates
+├── main.py          # App entry point & router registration
+└── vercel.json      # Vercel deployment configuration
+```
 
-## Endpoints
+## 🔗 Endpoints
 
-### Template Endpoints
+### Template Endpoints (Web Pages)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | Home / Login page |
-| GET | `/user/registration-success` | Registration success page with QR code |
-| GET | `/admin/dashboard` | Admin dashboard with event stats |
-| GET | `/admin/verify` | QR code scanning and verification page |
-| GET | `/admin/users` | User management — list, promote, demote, delete |
-| GET | `/admin/events` | Event management — create, edit, toggle, delete |
-| GET | `/admin/export-attendance` | Export attendance report as PDF |
+| GET | `/user/complete-profile` | User affiliation form (shown after first login) |
+| GET | `/user/events` | Participant dashboard: Register for events & view active QR codes |
+| GET | `/admin/dashboard` | Admin dashboard with live attendance stats |
+| GET | `/admin/users` | User management (List, Search, Pagination, Promote/Delete) |
+| GET | `/admin/events` | Event management (Create, Edit, Toggle, Delete) |
+| GET | `/admin/verify` | QR code scanning and attendance verification page |
 
-> Interactive API documentation is available at `/docs` (Swagger UI) and `/redoc`.
+### Functional Endpoints
 
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/export-attendance` | Export global attendance report (PDF) |
+| GET | `/admin/export-attendance/{id}` | Export per-event attendance report (PDF) |
+| GET | `/user/registrations/{id}/qr` | Download high-quality QR PNG for a specific registration |
+| POST | `/api/verify` | JSON API for QR scanning (used by verification page) |
 
-## Project Structure
+## 🔄 Workflow
 
-```
-├── config/          # Supabase client setup (sync auth + async admin)
-├── models/          # Pydantic data models
-├── routes/          # HTTP route handlers (thin layer)
-├── schemas/         # Pydantic request/response schemas
-├── services/        # Business logic (QR generation, user registration, verification)
-├── static/
-│   └── css/
-│       └── styles.css  # Consolidated stylesheet (all pages)
-├── templates/       # Jinja2 HTML templates
-├── main.py          # App entry point — lifespan, middleware, router registration
-├── pyproject.toml   # Project metadata and dependencies
-├── uv.lock          # Dependency lock file
-├── vercel.json      # Vercel deployment configuration
-└── .env.example     # Template for required environment variables
-```
+### 1. Participant Experience
+- **Login**: Users authenticate via GitHub.
+- **Onboarding**: New users must complete their profile details once.
+- **Registration**: Users browse the active events list and click "Register".
+- **Confirmation**: A unique QR code is displayed on-screen. If a WhatsApp link is provided for the event, a "Join Group" button appears.
 
-## Deployment Guide - Vercel
-To deploy this application on Vercel ( **Hope you alreday have a account that already connected to GitHub** ), follow these steps:
+### 2. Administrator Controls
+- **Role Assignment**: The first admin must be set manually in the Supabase `users` table. Subsequently, admins can promote others via `/admin/users`.
+- **Event Lifecycle**: Admins create events and toggle them as "Active". Activating one event automatically deactivates others if configured (standard flow).
+- **Attendance**: Admins use the `/admin/verify` page (mobile-friendly) to scan participant QR codes.
 
-### 1. Supabase Setup
-Since the Supabase project already created, you have to add the following environment variables to the `.env` file.
-1. Go to Supabase with your account (FOSSUOK account)
-2. Select the project name `qr.fossuok.org`
-3. Go to `Settings` -> `Project Settings` -> `API Keys` -> `Legacy anon, service_role API keys`
-4. Copy the `anon` and `service_role` keys and paste them in the `.env` file
-5. Without leaving the page go down to `Data API`
-6. Copy the `Project URL` and paste it in the `.env` file
+## 🚀 Deployment (Vercel)
 
-    `Note: All the required tables are already created in the database`
+1. Connect your GitHub repository to [Vercel](https://vercel.com).
+2. Use the **Python** runtime preset.
+3. Import your `.env` variables.
+4. Update `SUPABASE_GITHUB_CALLBACK_URL` and `GITHUB_REDIRECT_URI` to match your Vercel domain.
+5. In Supabase Dashboard, add your Vercel URL to `Authentication` -> `URL Configuration` -> `Site URL`.
 
-### 2. Vercel Setup
-1. Go to [Vercel](https://vercel.com)
-2. Click on "New Project"
-3. Select the repository `qr.fossuok.org`
-4. Make sure the `Application Preset` is set to Python
-5. Click on the `Environment Variables` dropdown menu and add the variables in the `.env` file or just simply click on `Import .env` file and upload the `.env` file.
-6. Before clicking on Deploy, make sure all the Environment Variables are added and correct.
-7. Click on Deploy and wait for the deployment to finish.
-8. After the deployement, you have to copy the URL of the deployed application.
-9. Go back to your `Supabase` project and go to `Authentication` -> `URL Configuration`.
-10. Pase the URL of the deployed application in the `Site URL` field.
-11. Go back to your Vercel project and go to `Settings` -> `Environment Variables`.
-12. Find the `SUPABASE_GITHUB_CALLBACK_URL` variable and update it with the URL with the following format:
-    ```bash
-    https://<your-vercel-url>/auth/callback
-    ```
-
-13. Click on save and it will prompt you to redeploy the application.
-14. Click on redeploy and wait for the deployment to finish.
-15. App is ready!
-
-## Important Note - For login
-
-### 1. Participant Registration
-- **How to register**: Users simply log in using their GitHub account.
-- **Workflow**: Upon first login, the system automatically creates a profile and registers the user for the currently **Active Event**.
-- **QR Code**: A unique QR code is generated and automatically sent to the user's registered GitHub email address. It is also displayed on the registration success page.
-
-### 2. Admin Access
-- **How to login**: Admins also use the GitHub login flow.
-- **Granting Admin Rights**: The first admin must be set manually in the Supabase `users` table (`role` → `admin`). After that, existing admins can promote/demote users from the **User Management** page (`/admin/users`).
-- **Admin Dashboard**: Once the role is updated, the user will be redirected to the Admin Dashboard (`/admin/dashboard`) upon login.
-
-### 3. Event Management
-- **Active Event**: Registration only works if there is an event with `is_active` set to `true`.
-- **Management**: Events can be created, edited, activated/deactivated, and deleted from the **Event Management** page (`/admin/events`). Activating an event automatically deactivates all others.
-
-### 4. TODO: Missing Features / Future Improvements
-- **QR Recovery**: Users can only see their QR code during registration or in their email. There is no "My Profile" page yet.
+---
+*Maintained by FOSS Community - University of Kelaniya*
